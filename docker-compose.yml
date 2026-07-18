@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: coachmind-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - coachmind-uploads:/app/uploads
+      - coachmind-db:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///./data/coachmind.db
+      - DEBUG=True
+    networks:
+      - coachmind-network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: coachmind-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - coachmind-network
+    restart: unless-stopped
+
+  # Optional: PostgreSQL for production
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: coachmind-db
+  #   environment:
+  #     POSTGRES_DB: coachmind
+  #     POSTGRES_USER: coachmind
+  #     POSTGRES_PASSWORD: changeme
+  #   volumes:
+ #     - postgres-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - coachmind-network
+
+volumes:
+  coachmind-uploads:
+  coachmind-db:
+  # postgres-data:
+
+networks:
+  coachmind-network:
+    driver: bridge
