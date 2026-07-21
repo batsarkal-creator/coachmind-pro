@@ -119,25 +119,84 @@
     <!-- Login Modal -->
     <div class="modal-overlay" id="loginModal">
         <div class="modal modal-login">
-            <div class="modal-header">
-                <h2>تسجيل الدخول</h2>
+            <div class="modal-header" style="padding-bottom: 0; border-bottom: none;">
+                <div class="auth-tabs" style="display: flex; width: 100%; gap: 4px; background: var(--bg-panel); padding: 4px; border-radius: var(--radius-md);">
+                    <button class="auth-tab active" data-tab="login" style="flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; transition: all 0.2s;">
+                        تسجيل الدخول
+                    </button>
+                    <button class="auth-tab" data-tab="register" style="flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; transition: all 0.2s;">
+                        حساب جديد
+                    </button>
+                </div>
             </div>
             <div class="modal-body">
-                <form id="loginForm">
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form active">
                     <div class="form-group">
                         <label>اسم المستخدم</label>
-                        <input type="text" name="username" required autocomplete="username">
+                        <input type="text" name="username" required autocomplete="username" placeholder="أدخل اسم المستخدم">
                     </div>
                     <div class="form-group">
                         <label>كلمة المرور</label>
-                        <input type="password" name="password" required autocomplete="current-password">
+                        <input type="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">دخول</button>
                 </form>
-                <p style="text-align: center; margin-top: 16px; color: var(--text-muted); font-size: 14px;">
+
+                <!-- Register Form -->
+                <form id="registerForm" class="auth-form">
+                    <div class="form-group">
+                        <label>الاسم الكامل</label>
+                        <input type="text" name="full_name" required placeholder="مثال: محمد أحمد">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>اسم المستخدم</label>
+                            <input type="text" name="username" required autocomplete="username" placeholder="اسم للدخول">
+                        </div>
+                        <div class="form-group">
+                            <label>البريد الإلكتروني</label>
+                            <input type="email" name="email" required placeholder="example@email.com">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور</label>
+                        <input type="password" name="password" required autocomplete="new-password" placeholder="8 أحرف على الأقل" minlength="6">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>العمر</label>
+                            <input type="number" name="age" min="10" max="100" placeholder="25">
+                        </div>
+                        <div class="form-group">
+                            <label>الوزن (كجم)</label>
+                            <input type="number" name="weight" step="0.1" min="20" max="300" placeholder="75">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>الطول (سم)</label>
+                            <input type="number" name="height" step="0.1" min="100" max="250" placeholder="175">
+                        </div>
+                        <div class="form-group">
+                            <label>الهدف</label>
+                            <select name="fitness_goal" class="form-select">
+                                <option value="muscle_gain">زيادة الكتلة العضلية</option>
+                                <option value="fat_loss">حرق الدهون</option>
+                                <option value="endurance">تحسين التحمل</option>
+                                <option value="strength">زيادة القوة</option>
+                                <option value="flexibility">تحسين المرونة</option>
+                                <option value="general">لياقة عامة</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">إنشاء الحساب</button>
+                </form>
+
+                <p style="text-align: center; margin-top: 16px; color: var(--text-muted); font-size: 13px;">
                     حساب تجريبي: demo / demo123
                 </p>
-                <div id="loginError" style="color: var(--error); text-align: center; margin-top: 12px; display: none;"></div>
+                <div id="loginError" style="color: var(--danger); text-align: center; margin-top: 12px; display: none;"></div>
             </div>
         </div>
     </div>

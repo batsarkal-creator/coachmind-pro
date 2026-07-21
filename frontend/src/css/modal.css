@@ -495,8 +495,8 @@
 }
 
 /* ============================================
-   RESPONSIVE
-   ============================================ */
+    RESPONSIVE
+    ============================================ */
 
 @media (max-width: 768px) {
     .modal { max-width: 100%; max-height: 90vh; }
@@ -508,4 +508,36 @@
     .toast-container { left: 16px; right: 16px; }
     .toast { min-width: auto; max-width: 100%; }
     .form-row { grid-template-columns: 1fr; }
+}
+
+/* ============================================
+    AUTH TABS (Login/Register)
+    ============================================ */
+
+.modal-login {
+    max-width: 480px;
+}
+
+.auth-tab {
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.auth-tab.active {
+    background: var(--accent);
+    color: var(--bg-dark);
+    box-shadow: var(--shadow-sm);
+}
+
+.auth-tab:not(.active):hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.auth-form {
+    display: none;
+}
+
+.auth-form.active {
+    display: block;
 }
