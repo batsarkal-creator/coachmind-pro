@@ -170,7 +170,7 @@ class FolderView {
     // Navigation
     navigateTo(folderId) {
         if (folderId === null) {
-            dashboardView.render();
+            window.dashboardView.render();
             return;
         }
         this.openFolder(folderId);

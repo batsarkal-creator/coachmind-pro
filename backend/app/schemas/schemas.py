@@ -186,8 +186,8 @@ class WorkoutSessionResponse(WorkoutSessionBase):
     completed_at: Optional[datetime]
     duration_minutes: Optional[int]
     total_volume: Optional[float]
-    total_sets: int
-    total_reps: int
+    total_sets: Optional[int] = 0
+    total_reps: Optional[int] = 0
     avg_heart_rate: Optional[int]
     max_heart_rate: Optional[int]
     calories_burned: Optional[float]

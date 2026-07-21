@@ -43,14 +43,14 @@ class AICoachService:
             insights.append({
                 "title": "تقدم ملحوظ في الحجم التدريبي!",
                 "content": f"حجم تدريبك اليوم ({current_volume}kg) أعلى بـ {((current_volume/previous_volume - 1) * 100):.0f}% عن معدلك. استمر في هذا الإيقاع!",
-                "type": InsightType.ANALYSIS,
+                "insight_type": InsightType.ANALYSIS,
                 "priority": 2
             })
         elif current_volume < previous_volume * 0.85:
             insights.append({
                 "title": "انخفاض في الحجم التدريبي",
                 "content": "لاحظت انخفاضاً في حجم تدريبك. قد يكون هذا يوم راحة مقصود أو تحتاج لمراجعة طاقتك.",
-                "type": InsightType.WARNING,
+                "insight_type": InsightType.WARNING,
                 "priority": 3
             })
 
@@ -66,14 +66,14 @@ class AICoachService:
             insights.append({
                 "title": "شدة عالية جداً",
                 "content": "شدة تدريبك اليوم في المنطقة الحمراء (>85%). تأكد من أخذ يوم راحة غداً.",
-                "type": InsightType.WARNING,
+                "insight_type": InsightType.WARNING,
                 "priority": 4
             })
         elif intensity < 0.5:
             insights.append({
                 "title": "شدة منخفضة",
                 "content": "شدة تدريبك منخفضة. جرب زيادة الوزن أو تقليل فترات الراحة.",
-                "type": InsightType.TIP,
+                "insight_type": InsightType.TIP,
                 "priority": 2
             })
 
@@ -85,7 +85,7 @@ class AICoachService:
                 insights.append({
                     "title": "تدريب متتالي",
                     "content": "تدربت بالأمس أيضاً. تأكد من أن عضلاتك استعادت قوتها قبل التمرين اليوم.",
-                    "type": InsightType.WARNING,
+                    "insight_type": InsightType.WARNING,
                     "priority": 3
                 })
 

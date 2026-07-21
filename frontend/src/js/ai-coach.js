@@ -113,7 +113,7 @@ class AICoachView {
             const insights = await dataService.getInsights(20);
             const insight = insights.find(i => i.id === insightId);
             if (insight) {
-                modalView.showInsightDetails(insight);
+                window.modalView.showInsightDetails(insight);
             }
         }
     }

@@ -22,7 +22,7 @@ async def seed_database(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="يتطلب صلاحيات مدير")
     
-    from app.seed import seed_database
+    from seed import seed_database
     seed_database()
     return {"message": "تم تهيئة قاعدة البيانات بنجاح"}
 
