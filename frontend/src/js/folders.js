@@ -111,12 +111,14 @@ class FolderView {
         const tagClass = { 
             beginner: 'tag-beginner', 
             intermediate: 'tag-intermediate', 
-            advanced: 'tag-advanced' 
+            advanced: 'tag-advanced',
+            elite: 'tag-advanced'
         };
         const tagName = { 
             beginner: 'مبتدئ', 
             intermediate: 'متوسط', 
-            advanced: 'متقدم' 
+            advanced: 'متقدم',
+            elite: 'محترف'
         };
 
         if (files.length === 0) {

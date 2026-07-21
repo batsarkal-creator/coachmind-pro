@@ -28,7 +28,8 @@ class AICoachService:
     async def analyze_workout_performance(
         self,
         workout_data: Dict[str, Any],
-        user_metrics: Dict[str, Any]
+        user_metrics: Dict[str, Any],
+        user_id: int = 1
     ) -> AIAnalysisResponse:
         """Analyze workout performance and generate insights"""
 
@@ -101,7 +102,7 @@ class AICoachService:
         predicted_score = self._calculate_performance_score(workout_data, user_metrics)
 
         return AIAnalysisResponse(
-            insights=[AIInsightResponse(**insight, id=i+1, user_id=1, is_read=False, 
+            insights=[AIInsightResponse(**insight, id=i+1, user_id=user_id, is_read=False, 
                      is_actioned=False, confidence_score=0.85, created_at=datetime.now()) 
                      for i, insight in enumerate(insights)],
             recommendations=recommendations,
@@ -111,7 +112,8 @@ class AICoachService:
 
     async def analyze_recovery_status(
         self,
-        user_metrics: Dict[str, Any]
+        user_metrics: Dict[str, Any],
+        user_id: int = 1
     ) -> List[AIInsightCreate]:
         """Analyze recovery status and suggest rest/adjustments"""
 
@@ -123,7 +125,7 @@ class AICoachService:
 
         if hrv < baseline_hrv * 0.9:
             insights.append(AIInsightCreate(
-                user_id=1,
+                user_id=user_id,
                 title="جهازك العصبي تحت ضغط",
                 content="مؤشر HRV منخفض يشير إلى أن جسمك يحتاج للراحة. خفف من شدة التمرين اليوم أو خذ يوم راحة.",
                 insight_type=InsightType.WARNING,
@@ -134,7 +136,7 @@ class AICoachService:
         sleep_hours = user_metrics.get("sleep_hours", 7)
         if sleep_hours < 6:
             insights.append(AIInsightCreate(
-                user_id=1,
+                user_id=user_id,
                 title="نوم غير كافٍ",
                 content=f"نمت {sleep_hours} ساعات فقط. النوم الكافي ضروري للتعافي. حاول النوم مبكراً الليلة.",
                 insight_type=InsightType.WARNING,
@@ -145,7 +147,7 @@ class AICoachService:
         weekly_sessions = user_metrics.get("weekly_sessions", 0)
         if weekly_sessions > 6:
             insights.append(AIInsightCreate(
-                user_id=1,
+                user_id=user_id,
                 title="حمل تدريبي مرتفع",
                 content=f"تدربت {weekly_sessions} مرات هذا الأسبوع. هذا كثير جداً. أنصح بـ 4-5 جلسات كحد أقصى.",
                 insight_type=InsightType.RECOMMENDATION,

@@ -172,7 +172,7 @@ class DashboardView {
                         <div class="folder-name">${f.name}</div>
                         <div class="folder-meta">
                             <span>📄 ${f.file_count || 0} ملف</span>
-                            <span>🕐 منذ يوم</span>
+                            <span>🕐 ${f.updated_at ? formatRelativeTime(f.updated_at) : 'منذ يوم'}</span>
                         </div>
                         <div class="folder-progress">
                             <div class="folder-progress-bar" style="width: ${f.progress || 0}%; background: linear-gradient(90deg, ${f.color}, ${f.color}88);"></div>
@@ -185,8 +185,8 @@ class DashboardView {
 
     renderRecentFiles(files) {
         const iconMap = { pdf: '📄', video: '🎥', image: '🖼️', spreadsheet: '📊', audio: '🎵' };
-        const tagClass = { beginner: 'tag-beginner', intermediate: 'tag-intermediate', advanced: 'tag-advanced' };
-        const tagName = { beginner: 'مبتدئ', intermediate: 'متوسط', advanced: 'متقدم' };
+        const tagClass = { beginner: 'tag-beginner', intermediate: 'tag-intermediate', advanced: 'tag-advanced', elite: 'tag-advanced' };
+        const tagName = { beginner: 'مبتدئ', intermediate: 'متوسط', advanced: 'متقدم', elite: 'محترف' };
 
         return `
             <div class="section-header">
@@ -194,7 +194,7 @@ class DashboardView {
                     <span class="icon">📄</span>
                     الملفات الأخيرة
                 </div>
-                <button class="btn btn-sm" onclick="appState.setView('folders')">عرض الكل</button>
+                <button class="btn btn-sm" onclick="dashboardView.render()">عرض الكل</button>
             </div>
             <div class="files-list">
                 <div class="file-row header">

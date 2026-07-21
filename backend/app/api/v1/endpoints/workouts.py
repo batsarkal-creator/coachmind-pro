@@ -5,7 +5,7 @@ Training session management and logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.database import get_db
 from app.schemas.schemas import WorkoutSessionCreate, WorkoutSessionUpdate, WorkoutSessionResponse
@@ -81,12 +81,12 @@ async def update_workout(
 
     # Auto-calculate metrics
     if workout_update.status == "completed" and not workout.completed_at:
-        workout.completed_at = datetime.utcnow()
+        workout.completed_at = datetime.now(timezone.utc)
         if workout.started_at:
-            workout.duration_minutes = int((datetime.utcnow() - workout.started_at).total_seconds() / 60)
+            workout.duration_minutes = int((datetime.now(timezone.utc) - workout.started_at).total_seconds() / 60)
 
     if workout_update.status == "in_progress" and not workout.started_at:
-        workout.started_at = datetime.utcnow()
+        workout.started_at = datetime.now(timezone.utc)
 
     for field, value in workout_update.model_dump(exclude_unset=True).items():
         setattr(workout, field, value)

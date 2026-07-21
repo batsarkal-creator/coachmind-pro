@@ -4,7 +4,7 @@ File system-like folder management
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.db.database import get_db
 from app.schemas.schemas import FolderCreate, FolderUpdate, FolderResponse
@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[FolderResponse])
 async def list_folders(
-    parent_id: int = None,
+    parent_id: Optional[int] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),

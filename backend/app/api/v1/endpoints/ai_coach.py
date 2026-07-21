@@ -26,7 +26,8 @@ async def analyze_workout(
     """Analyze workout performance with AI"""
     result = await ai_coach.analyze_workout_performance(
         request.workout_data,
-        request.user_metrics
+        request.user_metrics,
+        user_id=current_user.id
     )
     return result
 
@@ -37,8 +38,8 @@ async def analyze_recovery(
     current_user: User = Depends(get_current_active_user)
 ):
     """Analyze recovery status"""
-    insights = await ai_coach.analyze_recovery_status(user_metrics)
-    return {"insights": insights, "status": "analyzed"}
+    insights = await ai_coach.analyze_recovery_status(user_metrics, user_id=current_user.id)
+    return {"insights": [i.model_dump() for i in insights], "status": "analyzed"}
 
 @router.post("/generate-plan", response_model=AITrainingPlanResponse)
 async def generate_training_plan(

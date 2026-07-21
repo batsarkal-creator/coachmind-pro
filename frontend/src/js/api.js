@@ -28,11 +28,11 @@ class APIClient {
         const url = `${this.baseURL}${endpoint}`;
 
         const config = {
+            ...options,
             headers: {
                 'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
+                ...(options.headers || {})
+            }
         };
 
         if (this.token) {

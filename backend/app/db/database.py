@@ -1,7 +1,6 @@
 """Database Configuration & Session Management"""
 from sqlalchemy import create_engine, event
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from app.core.config import settings
 
 # Create engine
@@ -15,7 +14,8 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for models
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 # Dependency
 def get_db() -> Session:

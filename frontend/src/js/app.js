@@ -76,9 +76,12 @@ class ModalView {
     }
 
     showInsightDetails(insight) {
+        const iconMap = { tip: '💡', warning: '⚠️', recommendation: '📋', analysis: '📊', info: 'ℹ️', goal: '🎯' };
+        const icon = insight.icon || iconMap[insight.insight_type || insight.type] || '💡';
+        const typeLabel = (insight.insight_type || insight.type) === 'warning' ? 'تنبيه' : 'توصية';
         this.open(insight.title, `
             <div class="workout-detail">
-                <h5>${insight.icon} ${insight.type === 'warning' ? 'تنبيه' : 'توصية'}</h5>
+                <h5>${icon} ${typeLabel}</h5>
                 <p>${insight.content}</p>
             </div>
             <div class="workout-detail">
