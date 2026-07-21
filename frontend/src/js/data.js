@@ -251,6 +251,41 @@ class DataService {
         return this.fetchWithCache(`exercise_${id}`, () => api.getExercise(id));
     }
 
+    // ==================== PROGRESS ====================
+
+    async getProgressLogs(skip = 0, limit = 30) {
+        const key = `progress_${skip}_${limit}`;
+        return this.fetchWithCache(key, () => api.getProgressLogs(skip, limit));
+    }
+
+    async getLatestProgress() {
+        return this.fetchWithCache('latestProgress', () => api.getLatestProgress());
+    }
+
+    async createProgressLog(data) {
+        const result = await api.createProgressLog(data);
+        this.invalidateCache('progress_0_30');
+        this.invalidateCache('latestProgress');
+        return result;
+    }
+
+    // ==================== TRAINING PLANS ====================
+
+    async getPlans(skip = 0, limit = 20) {
+        const key = `plans_${skip}_${limit}`;
+        return this.fetchWithCache(key, () => api.getPlans(skip, limit));
+    }
+
+    async getPlan(id) {
+        return this.fetchWithCache(`plan_${id}`, () => api.getPlan(id));
+    }
+
+    async deletePlan(id) {
+        const result = await api.deletePlan(id);
+        this.invalidateCache('plans_0_20');
+        return result;
+    }
+
     // ==================== AI COACH ====================
 
     async analyzeWorkout(workoutData, userMetrics) {

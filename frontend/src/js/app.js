@@ -316,7 +316,8 @@ class Navigation {
         `;
 
         try {
-            const plans = await dataService.getFiles({ file_type: 'pdf', tags: 'training_plan' });
+            const plans = await dataService.getPlans();
+            const planColor = '#ec4899';
             this.container.innerHTML = `
                 <div class="section-header">
                     <div class="section-title">
@@ -329,26 +330,32 @@ class Navigation {
                 </div>
                 <div class="folders-grid">
                     ${(plans || []).map(p => `
-                        <div class="folder-card" style="cursor:pointer;" onclick="modalView.openFileById(${p.id})">
-                            <div class="folder-icon" style="background: ${p.color}18; font-size: 32px;">📋</div>
+                        <div class="folder-card" style="cursor:pointer;" onclick="modalView.open('${p.name}', '<div class=\\'workout-detail\\'><h5>📋 معلومات الخطة</h5><p>${p.name}</p></div><div class=\\'workout-detail\\'><h5>📝 الوصف</h5><p>${p.description || 'خطة تدريبية'}</p></div><div class=\\'workout-detail\\'><h5>⏱️ المدة</h5><p>${p.duration_weeks || '—'} أسابيع | ${p.days_per_week || '—'} أيام/أسبوع</p></div><div class=\\'workout-detail\\'><h5>🎯 الهدف</h5><p>${p.goal || '—'}</p></div><div class=\\'workout-detail\\'><h5>📊 المستوى</h5><p>${getDifficultyName(p.difficulty)}</p></div>')">
+                            <div class="folder-icon" style="background: ${planColor}18; font-size: 32px;">📋</div>
                             <div class="folder-name">${p.name}</div>
                             <div class="folder-meta">
                                 <span>${p.description || 'خطة تدريبية'}</span>
-                                <span>⭐ ${p.rating || 'جديد'}</span>
-                            </div>
-                            <div class="folder-progress">
-                                <div class="folder-progress-bar" style="width: ${p.progress || 0}%; background: linear-gradient(90deg, ${p.color || '#ef4444'}, ${p.color || '#ef4444'}88);"></div>
+                                <span>${p.duration_weeks ? p.duration_weeks + ' أسابيع' : ''}</span>
                             </div>
                         </div>
-                    `).join('') || '<div class="empty-state"><p>لا توجد خطط متاحة</p></div>'}
+                    `).join('') || '<div class="empty-state"><p>لا توجد خطط بعد. أنشئ خطة جديدة بالضغط على الزر أعلاه!</p></div>'}
                 </div>
             `;
         } catch (error) {
             console.error('Failed to load plans:', error);
             this.container.innerHTML = `
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">📋</span>
+                        خطط التدريب
+                    </div>
+                    <button class="btn btn-primary" onclick="modalView.showCreateModal('plan')">
+                        <span>➕</span> خطة جديدة
+                    </button>
+                </div>
                 <div class="alert alert-warning">
                     <h4>⚠️ تعذر تحميل الخطط</h4>
-                    <p>جاري عرض بيانات تجريبية. تأكد من تشغيل الخادم الخلفي.</p>
+                    <p>تأكد من تشغيل الخادم الخلفي.</p>
                     <button class="btn btn-primary" onclick="navigation.renderPlansView()">إعادة المحاولة</button>
                 </div>
             `;
@@ -500,8 +507,20 @@ class App {
                 console.log('✅ Auto-logged in as demo user');
             } catch (e) {
                 console.warn('Auto-login failed:', e);
+                this.showLoginModal();
+            }
+        } else {
+            // Verify existing token
+            try {
+                await api.getMe();
+            } catch (e) {
+                api.clearToken();
+                this.showLoginModal();
             }
         }
+
+        // Setup login form
+        this.setupLoginForm();
 
         // Render dashboard
         dashboardView.render();
@@ -528,6 +547,60 @@ class App {
                 duration: 6000
             });
         }, 1000);
+    }
+
+    showLoginModal() {
+        const loginModal = document.getElementById('loginModal');
+        if (loginModal) loginModal.classList.add('active');
+    }
+
+    setupLoginForm() {
+        const loginForm = document.getElementById('loginForm');
+        if (!loginForm) return;
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorDiv = document.getElementById('loginError');
+            if (errorDiv) errorDiv.style.display = 'none';
+
+            const username = loginForm.username.value.trim();
+            const password = loginForm.password.value.trim();
+
+            if (!username || !password) {
+                if (errorDiv) {
+                    errorDiv.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور';
+                    errorDiv.style.display = 'block';
+                }
+                return;
+            }
+
+            try {
+                const btn = loginForm.querySelector('button[type="submit"]');
+                if (btn) { btn.disabled = true; btn.textContent = 'جاري الدخول...'; }
+
+                await api.login(username, password);
+
+                const loginModal = document.getElementById('loginModal');
+                if (loginModal) loginModal.classList.remove('active');
+
+                dashboardView.render();
+                aiCoachView.loadInsights();
+
+                appState.addToast({
+                    type: 'success',
+                    title: 'تم تسجيل الدخول بنجاح',
+                    message: 'مرحباً بك في CoachMind Pro!',
+                    duration: 4000
+                });
+            } catch (err) {
+                if (errorDiv) {
+                    errorDiv.textContent = err.message || 'بيانات الدخول غير صحيحة';
+                    errorDiv.style.display = 'block';
+                }
+                const btn = loginForm.querySelector('button[type="submit"]');
+                if (btn) { btn.disabled = false; btn.textContent = 'دخول'; }
+            }
+        });
     }
 }
 

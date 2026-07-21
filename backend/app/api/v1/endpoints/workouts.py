@@ -91,6 +91,27 @@ async def update_workout(
     for field, value in workout_update.model_dump(exclude_unset=True).items():
         setattr(workout, field, value)
 
+    # Auto-calculate totals from exercises JSON
+    if workout.exercises:
+        total_volume = 0
+        total_sets = 0
+        total_reps = 0
+        for ex in workout.exercises:
+            if isinstance(ex, dict):
+                sets = ex.get("sets", 0)
+                reps = ex.get("reps", 0)
+                weight = ex.get("weight", 0) or 0
+                total_sets += sets
+                total_reps += sets * reps
+                total_volume += sets * reps * weight
+        workout.total_sets = total_sets
+        workout.total_reps = total_reps
+        workout.total_volume = total_volume
+
+    # Auto-calculate calories (rough estimate: 0.063 * total_volume)
+    if workout.total_volume and not workout.calories_burned:
+        workout.calories_burned = round(workout.total_volume * 0.063, 1)
+
     db.commit()
     db.refresh(workout)
     return workout

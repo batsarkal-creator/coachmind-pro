@@ -4,7 +4,7 @@ Main router aggregating all endpoint modules
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, users, folders, files, workouts, ai_coach, dashboard, exercises
+from app.api.v1.endpoints import auth, users, folders, files, workouts, ai_coach, dashboard, exercises, progress, plans
 
 api_router = APIRouter()
 
@@ -21,6 +21,8 @@ api_router.include_router(exercises.router, prefix="/exercises", tags=["Exercise
 
 # Training
 api_router.include_router(workouts.router, prefix="/workouts", tags=["Workouts"])
+api_router.include_router(plans.router, prefix="/plans", tags=["Training Plans"])
+api_router.include_router(progress.router, prefix="/progress", tags=["Progress Logs"])
 
 # AI & Analytics
 api_router.include_router(ai_coach.router, prefix="/ai", tags=["AI Coach"])

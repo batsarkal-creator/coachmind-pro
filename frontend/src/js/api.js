@@ -277,6 +277,52 @@ class APIClient {
     async getExercise(id) {
         return await this.request(`/exercises/${id}`);
     }
+
+    async updateExercise(id, data) {
+        return await this.request(`/exercises/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteExercise(id) {
+        return await this.request(`/exercises/${id}`, { method: 'DELETE' });
+    }
+
+    // ==================== PROGRESS ====================
+
+    async getProgressLogs(skip = 0, limit = 30) {
+        return await this.request(`/progress/?skip=${skip}&limit=${limit}`);
+    }
+
+    async getLatestProgress() {
+        return await this.request('/progress/latest');
+    }
+
+    async createProgressLog(data) {
+        return await this.request('/progress/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteProgressLog(id) {
+        return await this.request(`/progress/${id}`, { method: 'DELETE' });
+    }
+
+    // ==================== TRAINING PLANS ====================
+
+    async getPlans(skip = 0, limit = 20) {
+        return await this.request(`/plans/?skip=${skip}&limit=${limit}`);
+    }
+
+    async getPlan(id) {
+        return await this.request(`/plans/${id}`);
+    }
+
+    async deletePlan(id) {
+        return await this.request(`/plans/${id}`, { method: 'DELETE' });
+    }
 }
 
 // Global API instance

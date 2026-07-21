@@ -78,3 +78,41 @@ async def create_exercise(
     db.commit()
     db.refresh(exercise)
     return exercise
+
+@router.put("/{exercise_id}")
+async def update_exercise(
+    exercise_id: int,
+    exercise_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update exercise (coach/admin only)"""
+    _require_coach_or_admin(current_user)
+    exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
+    if not exercise:
+        raise HTTPException(status_code=404, detail="التمرين غير موجود")
+
+    allowed = {"name", "name_en", "description", "category", "primary_muscle",
+               "secondary_muscles", "difficulty", "equipment", "video_url", "tips", "instructions", "common_mistakes"}
+    for k, v in exercise_data.items():
+        if k in allowed:
+            setattr(exercise, k, v)
+
+    db.commit()
+    db.refresh(exercise)
+    return exercise
+
+@router.delete("/{exercise_id}")
+async def delete_exercise(
+    exercise_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete exercise (coach/admin only)"""
+    _require_coach_or_admin(current_user)
+    exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
+    if not exercise:
+        raise HTTPException(status_code=404, detail="التمرين غير موجود")
+    db.delete(exercise)
+    db.commit()
+    return {"message": "تم حذف التمرين بنجاح"}
