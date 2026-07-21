@@ -555,18 +555,16 @@ class App {
             try {
                 await api.login('demo', 'demo123');
                 console.log('✅ Auto-logged in as demo user');
-                // Re-render with real data
                 dashboardView.render();
                 aiCoachView.loadInsights();
                 this.updateBadges();
             } catch (e) {
-                console.warn('Auto-login failed:', e);
+                console.warn('Auto-login failed, showing login modal');
                 this.showLoginModal();
             }
         } else {
             try {
                 await api.getMe();
-                // Token valid, load real data
                 dashboardView.render();
                 aiCoachView.loadInsights();
                 this.updateBadges();
@@ -591,8 +589,7 @@ class App {
                 tab.classList.add('active');
                 const targetForm = tab.dataset.tab === 'login' ? 'loginForm' : 'registerForm';
                 document.getElementById(targetForm)?.classList.add('active');
-                const errorDiv = document.getElementById('loginError');
-                if (errorDiv) errorDiv.style.display = 'none';
+                this.hideAuthError();
             });
         });
 
@@ -601,46 +598,25 @@ class App {
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const errorDiv = document.getElementById('loginError');
-                if (errorDiv) errorDiv.style.display = 'none';
+                this.hideAuthError();
 
                 const username = loginForm.username.value.trim();
                 const password = loginForm.password.value.trim();
 
                 if (!username || !password) {
-                    if (errorDiv) {
-                        errorDiv.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور';
-                        errorDiv.style.display = 'block';
-                    }
+                    this.showAuthError('يرجى إدخال اسم المستخدم وكلمة المرور');
                     return;
                 }
 
+                const btn = loginForm.querySelector('.auth-submit');
+                this.setBtnLoading(btn, true, 'دخول');
+
                 try {
-                    const btn = loginForm.querySelector('button[type="submit"]');
-                    if (btn) { btn.disabled = true; btn.textContent = 'جاري الدخول...'; }
-
                     await api.login(username, password);
-
-                    const loginModal = document.getElementById('loginModal');
-                    if (loginModal) loginModal.classList.remove('active');
-
-                    dashboardView.render();
-                    aiCoachView.loadInsights();
-                    this.updateBadges();
-
-                    appState.addToast({
-                        type: 'success',
-                        title: 'تم تسجيل الدخول بنجاح',
-                        message: 'مرحباً بك في CoachMind Pro!',
-                        duration: 4000
-                    });
+                    this.onAuthSuccess();
                 } catch (err) {
-                    if (errorDiv) {
-                        errorDiv.textContent = err.message || 'بيانات الدخول غير صحيحة';
-                        errorDiv.style.display = 'block';
-                    }
-                    const btn = loginForm.querySelector('button[type="submit"]');
-                    if (btn) { btn.disabled = false; btn.textContent = 'دخول'; }
+                    this.showAuthError(err.message || 'بيانات الدخول غير صحيحة');
+                    this.setBtnLoading(btn, false, 'دخول');
                 }
             });
         }
@@ -650,8 +626,7 @@ class App {
         if (registerForm) {
             registerForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const errorDiv = document.getElementById('loginError');
-                if (errorDiv) errorDiv.style.display = 'none';
+                this.hideAuthError();
 
                 const formData = new FormData(registerForm);
                 const username = formData.get('username')?.trim();
@@ -660,18 +635,12 @@ class App {
                 const full_name = formData.get('full_name')?.trim();
 
                 if (!username || !email || !password || !full_name) {
-                    if (errorDiv) {
-                        errorDiv.textContent = 'يرجى ملء جميع الحقول المطلوبة';
-                        errorDiv.style.display = 'block';
-                    }
+                    this.showAuthError('يرجى ملء جميع الحقول المطلوبة');
                     return;
                 }
 
-                if (password.length < 6) {
-                    if (errorDiv) {
-                        errorDiv.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                        errorDiv.style.display = 'block';
-                    }
+                if (password.length < 8) {
+                    this.showAuthError('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
                     return;
                 }
 
@@ -686,38 +655,65 @@ class App {
                     fitness_goal: formData.get('fitness_goal') || 'general'
                 };
 
+                const btn = registerForm.querySelector('.auth-submit');
+                this.setBtnLoading(btn, true, 'إنشاء الحساب');
+
                 try {
-                    const btn = registerForm.querySelector('button[type="submit"]');
-                    if (btn) { btn.disabled = true; btn.textContent = 'جاري الإنشاء...'; }
-
                     await api.register(userData);
-
                     // Auto-login after registration
                     await api.login(username, password);
-
-                    const loginModal = document.getElementById('loginModal');
-                    if (loginModal) loginModal.classList.remove('active');
-
-                    dashboardView.render();
-                    aiCoachView.loadInsights();
-                    this.updateBadges();
-
-                    appState.addToast({
-                        type: 'success',
-                        title: 'تم إنشاء الحساب بنجاح',
-                        message: 'مرحباً بك في CoachMind Pro!',
-                        duration: 4000
-                    });
+                    this.onAuthSuccess('تم إنشاء الحساب بنجاح! مرحباً بك في CoachMind Pro');
                 } catch (err) {
-                    if (errorDiv) {
-                        errorDiv.textContent = err.message || 'تعذر إنشاء الحساب. تحقق من البيانات المدخلة.';
-                        errorDiv.style.display = 'block';
-                    }
-                    const btn = registerForm.querySelector('button[type="submit"]');
-                    if (btn) { btn.disabled = false; btn.textContent = 'إنشاء الحساب'; }
+                    let msg = err.message || 'تعذر إنشاء الحساب';
+                    if (msg.includes('email')) msg = 'البريد الإلكتروني مستخدم بالفعل';
+                    else if (msg.includes('username')) msg = 'اسم المستخدم مستخدم بالفعل';
+                    else if (msg.includes('least 8')) msg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+                    this.showAuthError(msg);
+                    this.setBtnLoading(btn, false, 'إنشاء الحساب');
                 }
             });
         }
+    }
+
+    setBtnLoading(btn, loading, text) {
+        if (!btn) return;
+        const btnText = btn.querySelector('.btn-text');
+        const btnLoader = btn.querySelector('.btn-loader');
+        if (loading) {
+            btn.disabled = true;
+            if (btnText) btnText.textContent = 'جاري...';
+            if (btnLoader) btnLoader.style.display = 'inline-flex';
+        } else {
+            btn.disabled = false;
+            if (btnText) btnText.textContent = text;
+            if (btnLoader) btnLoader.style.display = 'none';
+        }
+    }
+
+    showAuthError(msg) {
+        const el = document.getElementById('loginError');
+        if (el) { el.textContent = msg; el.style.display = 'block'; }
+    }
+
+    hideAuthError() {
+        const el = document.getElementById('loginError');
+        if (el) el.style.display = 'none';
+    }
+
+    onAuthSuccess(msg) {
+        const loginModal = document.getElementById('loginModal');
+        if (loginModal) loginModal.classList.remove('active');
+
+        dashboardView.render();
+        aiCoachView.loadInsights();
+        this.updateBadges();
+
+        appState.addToast({
+            type: 'success',
+            title: msg || 'تم تسجيل الدخول بنجاح',
+            message: 'مرحباً بك في CoachMind Pro!',
+            duration: 4000
+        });
     }
 
     async updateBadges() {

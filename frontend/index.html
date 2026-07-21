@@ -119,84 +119,116 @@
     <!-- Login Modal -->
     <div class="modal-overlay" id="loginModal">
         <div class="modal modal-login">
-            <div class="modal-header" style="padding-bottom: 0; border-bottom: none;">
-                <div class="auth-tabs" style="display: flex; width: 100%; gap: 4px; background: var(--bg-panel); padding: 4px; border-radius: var(--radius-md);">
-                    <button class="auth-tab active" data-tab="login" style="flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; transition: all 0.2s;">
-                        تسجيل الدخول
-                    </button>
-                    <button class="auth-tab" data-tab="register" style="flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; transition: all 0.2s;">
-                        حساب جديد
-                    </button>
+            <div class="auth-header">
+                <div class="auth-logo">🧠</div>
+                <h2>مرحباً بك في CoachMind</h2>
+                <p>منصتك الذكية للتدريب الرياضي</p>
+            </div>
+            <div class="auth-tabs-container">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">تسجيل الدخول</button>
+                    <button class="auth-tab" data-tab="register">حساب جديد</button>
+                    <div class="auth-tab-indicator"></div>
                 </div>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding-top: 8px;">
                 <!-- Login Form -->
                 <form id="loginForm" class="auth-form active">
                     <div class="form-group">
-                        <label>اسم المستخدم</label>
-                        <input type="text" name="username" required autocomplete="username" placeholder="أدخل اسم المستخدم">
+                        <label class="form-label">اسم المستخدم</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">👤</span>
+                            <input type="text" name="username" required autocomplete="username" placeholder="أدخل اسم المستخدم" class="form-input with-icon">
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>كلمة المرور</label>
-                        <input type="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
+                        <label class="form-label">كلمة المرور</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور" class="form-input with-icon">
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">دخول</button>
+                    <button type="submit" class="btn btn-primary btn-lg auth-submit">
+                        <span class="btn-text">دخول</span>
+                        <span class="btn-loader" style="display:none;">
+                            <span class="spinner-sm"></span>
+                        </span>
+                    </button>
+                    <div class="auth-footer">
+                        <span>حساب تجريبي: </span>
+                        <code class="demo-creds" onclick="document.querySelector('#loginForm [name=username]').value='demo'; document.querySelector('#loginForm [name=password]').value='demo123';">demo / demo123</code>
+                    </div>
                 </form>
 
                 <!-- Register Form -->
                 <form id="registerForm" class="auth-form">
                     <div class="form-group">
-                        <label>الاسم الكامل</label>
-                        <input type="text" name="full_name" required placeholder="مثال: محمد أحمد">
+                        <label class="form-label">الاسم الكامل</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">📝</span>
+                            <input type="text" name="full_name" required placeholder="مثال: محمد أحمد" class="form-input with-icon">
+                        </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>اسم المستخدم</label>
-                            <input type="text" name="username" required autocomplete="username" placeholder="اسم للدخول">
+                            <label class="form-label">اسم المستخدم</label>
+                            <div class="input-wrapper">
+                                <span class="input-icon">👤</span>
+                                <input type="text" name="username" required autocomplete="username" placeholder="اسم للدخول" class="form-input with-icon">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label>البريد الإلكتروني</label>
-                            <input type="email" name="email" required placeholder="example@email.com">
+                            <label class="form-label">البريد الإلكتروني</label>
+                            <div class="input-wrapper">
+                                <span class="input-icon">📧</span>
+                                <input type="email" name="email" required placeholder="email@example.com" class="form-input with-icon" dir="ltr" style="text-align: left;">
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>كلمة المرور</label>
-                        <input type="password" name="password" required autocomplete="new-password" placeholder="8 أحرف على الأقل" minlength="6">
+                        <label class="form-label">كلمة المرور</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" name="password" required autocomplete="new-password" placeholder="8 أحرف على الأقل" minlength="8" class="form-input with-icon">
+                        </div>
+                        <span class="form-hint">يجب أن تحتوي على 8 أحرف على الأقل</span>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>العمر</label>
-                            <input type="number" name="age" min="10" max="100" placeholder="25">
+                            <label class="form-label">العمر</label>
+                            <input type="number" name="age" min="10" max="100" placeholder="25" class="form-input">
                         </div>
                         <div class="form-group">
-                            <label>الوزن (كجم)</label>
-                            <input type="number" name="weight" step="0.1" min="20" max="300" placeholder="75">
+                            <label class="form-label">الوزن (كجم)</label>
+                            <input type="number" name="weight" step="0.1" min="20" max="300" placeholder="75" class="form-input">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>الطول (سم)</label>
-                            <input type="number" name="height" step="0.1" min="100" max="250" placeholder="175">
+                            <label class="form-label">الطول (سم)</label>
+                            <input type="number" name="height" step="0.1" min="100" max="250" placeholder="175" class="form-input">
                         </div>
                         <div class="form-group">
-                            <label>الهدف</label>
+                            <label class="form-label">الهدف</label>
                             <select name="fitness_goal" class="form-select">
-                                <option value="muscle_gain">زيادة الكتلة العضلية</option>
-                                <option value="fat_loss">حرق الدهون</option>
-                                <option value="endurance">تحسين التحمل</option>
-                                <option value="strength">زيادة القوة</option>
-                                <option value="flexibility">تحسين المرونة</option>
-                                <option value="general">لياقة عامة</option>
+                                <option value="muscle_gain">💪 زيادة الكتلة العضلية</option>
+                                <option value="fat_loss">🔥 حرق الدهون</option>
+                                <option value="endurance">🏃 تحسين التحمل</option>
+                                <option value="strength">🏋️ زيادة القوة</option>
+                                <option value="flexibility">🧘 تحسين المرونة</option>
+                                <option value="general">⚡ لياقة عامة</option>
                             </select>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">إنشاء الحساب</button>
+                    <button type="submit" class="btn btn-primary btn-lg auth-submit">
+                        <span class="btn-text">إنشاء الحساب</span>
+                        <span class="btn-loader" style="display:none;">
+                            <span class="spinner-sm"></span>
+                        </span>
+                    </button>
                 </form>
 
-                <p style="text-align: center; margin-top: 16px; color: var(--text-muted); font-size: 13px;">
-                    حساب تجريبي: demo / demo123
-                </p>
-                <div id="loginError" style="color: var(--danger); text-align: center; margin-top: 12px; display: none;"></div>
+                <div id="loginError" class="auth-error" style="display: none;"></div>
             </div>
         </div>
     </div>
