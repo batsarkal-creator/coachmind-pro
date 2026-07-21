@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from contextlib import asynccontextmanager
 import uvicorn
+import os
 
 from app.core.config import settings
 from app.api.v1.router import api_router
@@ -33,10 +34,11 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS
+# CORS - Read from environment variable
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,https://coachmind-pro.netlify.app").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[origin.strip() for origin in cors_origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

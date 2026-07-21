@@ -2,7 +2,7 @@
 CoachMind Pro - Exercise Library Endpoints
 Exercise database management
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -19,11 +19,12 @@ async def list_exercises(
     muscle: Optional[str] = None,
     difficulty: Optional[DifficultyLevel] = None,
     search: Optional[str] = None,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """List exercises from library"""
+    """List exercises from library with pagination"""
     query = db.query(Exercise)
 
     if category:
@@ -35,7 +36,7 @@ async def list_exercises(
     if search:
         query = query.filter(Exercise.name.contains(search))
 
-    exercises = query.order_by(Exercise.popularity.desc()).limit(limit).all()
+    exercises = query.order_by(Exercise.popularity.desc()).offset(skip).limit(limit).all()
     return exercises
 
 @router.get("/{exercise_id}")

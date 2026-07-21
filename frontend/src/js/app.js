@@ -3,6 +3,12 @@
  * Entry point and global event handlers
  */
 
+// Import utility functions and services
+import { formatRelativeTime, formatFileSize, getFileIcon, getDifficultyClass, getDifficultyName, dataService, appState } from './data.js';
+import { dashboardView } from './dashboard.js';
+import { folderView } from './folders.js';
+import { aiCoachView } from './ai-coach.js';
+
 class ModalView {
     constructor() {
         this.overlay = document.getElementById('modalOverlay');
@@ -37,43 +43,34 @@ class ModalView {
         document.body.style.overflow = '';
     }
 
-    openFile(fileKey) {
-        const data = MOCK_WORKOUT_DATA[fileKey];
-        if (!data) {
-            this.open('ملف غير موجود', '<p>عذراً، لم يتم العثور على بيانات هذا الملف.</p>');
-            return;
-        }
-        this.open(data.title, data.content + this.renderModalActions());
+    openFile(fileId) {
+        return this.openFileById(fileId);
     }
 
-    openFileById(fileId) {
-        const file = MOCK_FILES.find(f => f.id === fileId);
-        if (!file) return;
+    async openFileById(fileId) {
+        try {
+            const file = await dataService.getFile(fileId);
+            if (!file) return;
 
-        // Map file name to workout data key
-        const keyMap = {
-            'تمرين الضغط المتقدم': 'bench',
-            'برنامج HIIT لحرق الدهون': 'hiit',
-            'وضعيات اليوغا للاستشفاء': 'yoga',
-            'جدول التغذية الأسبوعي': 'meal'
-        };
-
-        const key = keyMap[file.name];
-        if (key && MOCK_WORKOUT_DATA[key]) {
-            this.openFile(key);
-        } else {
             this.open(file.name, `
-                <p>${file.description}</p>
+                <p>${file.description || ''}</p>
                 <div class="workout-detail">
                     <h5>📂 معلومات الملف</h5>
-                    <p>النوع: ${file.file_type} | الحجم: ${file.size} | المشاهدات: ${file.view_count}</p>
+                    <p>النوع: ${file.file_type} | الحجم: ${file.file_size ? formatFileSize(file.file_size) : 'غير معروف'} | المشاهدات: ${file.view_count || 0}</p>
                 </div>
                 <div class="workout-detail">
                     <h5>🏷️ الوسوم</h5>
-                    <p>${file.tags.map(t => `<span class="tag tag-ai">${t}</span>`).join(' ')}</p>
+                    <p>${(file.tags || []).map(t => `<span class="tag tag-ai">${t}</span>`).join(' ')}</p>
+                </div>
+                <div class="workout-detail">
+                    <h5>💪 العضلات المستهدفة</h5>
+                    <p>${(file.muscle_groups || []).map(m => `<span class="tag">${m}</span>`).join(' ')}</p>
                 </div>
                 ${this.renderModalActions()}
             `);
+        } catch (error) {
+            console.error('Failed to load file:', error);
+            this.open('خطأ', '<p>تعذر تحميل بيانات الملف</p>');
         }
     }
 
@@ -230,6 +227,7 @@ class Navigation {
     constructor() {
         this.sidebar = document.getElementById('sidebar');
         this.currentPath = document.getElementById('currentPath');
+        this.container = document.getElementById('contentArea');
         this.init();
     }
 
@@ -296,8 +294,8 @@ class Navigation {
         }
     }
 
-    renderPlansView() {
-        document.getElementById('contentArea').innerHTML = `
+    async renderPlansView() {
+        this.container.innerHTML = `
             <div class="section-header">
                 <div class="section-title">
                     <span class="icon">📋</span>
@@ -307,33 +305,54 @@ class Navigation {
                     <span>➕</span> خطة جديدة
                 </button>
             </div>
-            <div class="folders-grid">
-                ${[
-                    { name: 'بناء العضلات - 12 أسبوع', icon: '💪', desc: '3 أيام/أسبوع', color: '#ef4444' },
-                    { name: 'حرق الدهون - 8 أسابيع', icon: '🔥', desc: '5 أيام/أسبوع', color: '#f59e0b' },
-                    { name: 'القوة الخارقة - 16 أسبوع', icon: '🏋️', desc: '4 أيام/أسبوع', color: '#8b5cf6' },
-                    { name: 'الماراثون - 20 أسبوع', icon: '🏃', desc: '6 أيام/أسبوع', color: '#3b82f6' },
-                    { name: 'YOGA Flow - 6 أسابيع', icon: '🧘', desc: '4 أيام/أسبوع', color: '#10b981' },
-                    { name: 'خطة AI مخصصة', icon: '🤖', desc: 'حسب بياناتك', color: '#ec4899' }
-                ].map(p => `
-                    <div class="folder-card" style="cursor:pointer;">
-                        <div class="folder-icon" style="background: ${p.color}18; font-size: 32px;">${p.icon}</div>
-                        <div class="folder-name">${p.name}</div>
-                        <div class="folder-meta">
-                            <span>${p.desc}</span>
-                            <span>⭐ 4.8</span>
-                        </div>
-                        <div class="folder-progress">
-                            <div class="folder-progress-bar" style="width: ${Math.floor(Math.random() * 40 + 30)}%; background: linear-gradient(90deg, ${p.color}, ${p.color}88);"></div>
-                        </div>
-                    </div>
-                `).join('')}
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>جاري تحميل الخطط...</p>
             </div>
         `;
+
+        try {
+            const plans = await dataService.getFiles({ file_type: 'pdf', tags: 'training_plan' });
+            this.container.innerHTML = `
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">📋</span>
+                        خطط التدريب
+                    </div>
+                    <button class="btn btn-primary" onclick="modalView.showCreateModal('plan')">
+                        <span>➕</span> خطة جديدة
+                    </button>
+                </div>
+                <div class="folders-grid">
+                    ${(plans || []).map(p => `
+                        <div class="folder-card" style="cursor:pointer;" onclick="modalView.openFileById(${p.id})">
+                            <div class="folder-icon" style="background: ${p.color}18; font-size: 32px;">📋</div>
+                            <div class="folder-name">${p.name}</div>
+                            <div class="folder-meta">
+                                <span>${p.description || 'خطة تدريبية'}</span>
+                                <span>⭐ ${p.rating || 'جديد'}</span>
+                            </div>
+                            <div class="folder-progress">
+                                <div class="folder-progress-bar" style="width: ${p.progress || 0}%; background: linear-gradient(90deg, ${p.color || '#ef4444'}, ${p.color || '#ef4444'}88);"></div>
+                            </div>
+                        </div>
+                    `).join('') || '<div class="empty-state"><p>لا توجد خطط متاحة</p></div>'}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Failed to load plans:', error);
+            this.container.innerHTML = `
+                <div class="alert alert-warning">
+                    <h4>⚠️ تعذر تحميل الخطط</h4>
+                    <p>جاري عرض بيانات تجريبية. تأكد من تشغيل الخادم الخلفي.</p>
+                    <button class="btn btn-primary" onclick="navigation.renderPlansView()">إعادة المحاولة</button>
+                </div>
+            `;
+        }
     }
 
-    renderExercisesView() {
-        document.getElementById('contentArea').innerHTML = `
+    async renderExercisesView() {
+        this.container.innerHTML = `
             <div class="section-header">
                 <div class="section-title">
                     <span class="icon">🏋️</span>
@@ -341,44 +360,66 @@ class Navigation {
                 </div>
                 <div class="search-box" style="width: 300px;">
                     <span>🔍</span>
-                    <input type="text" placeholder="ابحث عن تمرين...">
+                    <input type="text" placeholder="ابحث عن تمرين..." id="exerciseSearch">
                 </div>
             </div>
-            <div class="files-list">
-                <div class="file-row header">
-                    <div>التمرين</div>
-                    <div>العضلة المستهدفة</div>
-                    <div>المستوى</div>
-                    <div>التقييم</div>
-                    <div></div>
-                </div>
-                ${[
-                    { name: 'Bench Press', ar: 'الضغط', muscle: 'الصدر', level: 'متقدم', rating: 4.9, icon: '🏋️' },
-                    { name: 'Squat', ar: 'السكوات', muscle: 'الفخذ', level: 'متوسط', rating: 4.8, icon: '🦵' },
-                    { name: 'Deadlift', ar: 'الديدليفت', muscle: 'الظهر', level: 'متقدم', rating: 4.7, icon: '🏋️' },
-                    { name: 'Pull Up', ar: 'السحب', muscle: 'الظهر', level: 'متوسط', rating: 4.6, icon: '💪' },
-                    { name: 'Plank', ar: 'البلانك', muscle: 'البطن', level: 'مبتدئ', rating: 4.5, icon: '🧘' },
-                    { name: 'Burpees', ar: 'البربيز', muscle: 'كامل الجسم', level: 'متقدم', rating: 4.4, icon: '🔥' }
-                ].map(e => `
-                    <div class="file-row" style="cursor:pointer;">
-                        <div class="file-info">
-                            <div class="file-icon" style="background: var(--accent-glow); font-size: 20px;">${e.icon}</div>
-                            <div class="file-details">
-                                <div class="file-name">${e.ar} (${e.name})</div>
-                                <div class="file-desc">تمرين مركب أساسي</div>
-                            </div>
-                        </div>
-                        <div class="file-date">${e.muscle}</div>
-                        <div><span class="tag ${e.level === 'مبتدئ' ? 'tag-beginner' : e.level === 'متوسط' ? 'tag-intermediate' : 'tag-advanced'}">${e.level}</span></div>
-                        <div class="file-size">⭐ ${e.rating}</div>
-                        <div class="file-actions">
-                            <button>▶️</button>
-                            <button>⭐</button>
-                        </div>
-                    </div>
-                `).join('')}
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>جاري تحميل التمارين...</p>
             </div>
         `;
+
+        try {
+            const exercises = await dataService.getExercises();
+            this.container.innerHTML = `
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">🏋️</span>
+                        مكتبة التمارين
+                    </div>
+                    <div class="search-box" style="width: 300px;">
+                        <span>🔍</span>
+                        <input type="text" placeholder="ابحث عن تمرين..." id="exerciseSearch">
+                    </div>
+                </div>
+                <div class="files-list">
+                    <div class="file-row header">
+                        <div>التمرين</div>
+                        <div>العضلة المستهدفة</div>
+                        <div>المستوى</div>
+                        <div>التقييم</div>
+                        <div></div>
+                    </div>
+                    ${(exercises || []).map(e => `
+                        <div class="file-row" style="cursor:pointer;" onclick="modalView.openFileById(${e.id})">
+                            <div class="file-info">
+                                <div class="file-icon" style="background: var(--accent-glow); font-size: 20px;">${getFileIcon(e.category)}</div>
+                                <div class="file-details">
+                                    <div class="file-name">${e.name} (${e.name_en || ''})</div>
+                                    <div class="file-desc">${e.description || 'تمرين'}</div>
+                                </div>
+                            </div>
+                            <div class="file-date">${e.primary_muscle || ''}</div>
+                            <div><span class="tag ${getDifficultyClass(e.difficulty)}">${getDifficultyName(e.difficulty)}</span></div>
+                            <div class="file-size">⭐ ${e.avg_rating || 'جديد'}</div>
+                            <div class="file-actions">
+                                <button>▶️</button>
+                                <button>⭐</button>
+                            </div>
+                        </div>
+                    `).join('') || '<div class="empty-state"><p>لا توجد تمارين متاحة</p></div>'}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Failed to load exercises:', error);
+            this.container.innerHTML = `
+                <div class="alert alert-warning">
+                    <h4>⚠️ تعذر تحميل التمارين</h4>
+                    <p>جاري عرض بيانات تجريبية. تأكد من تشغيل الخادم الخلفي.</p>
+                    <button class="btn btn-primary" onclick="navigation.renderExercisesView()">إعادة المحاولة</button>
+                </div>
+            `;
+        }
     }
 
     renderAIView() {
@@ -439,6 +480,7 @@ class Navigation {
 class App {
     constructor() {
         this.navigation = new Navigation();
+        window.navigation = this.navigation;
         this.initialized = false;
     }
 
@@ -477,3 +519,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
     app.init();
 });
+
+// Export global instances for inline event handlers
+window.modalView = modalView;
+window.dashboardView = dashboardView;
+window.folderView = folderView;
+window.aiCoachView = aiCoachView;
+window.appState = appState;
+window.toastSystem = toastSystem;

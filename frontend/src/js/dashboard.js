@@ -1,23 +1,76 @@
 /**
  * CoachMind Pro - Dashboard Module
- * Renders dashboard view with stats, folders, and recent files
+ * Renders dashboard view with stats, folders, and recent files using real API
  */
+
+import { formatRelativeTime, formatFileSize, dataService, appState, FALLBACK_FOLDERS, FALLBACK_FILES } from './data.js';
 
 class DashboardView {
     constructor() {
         this.container = document.getElementById('contentArea');
     }
 
-    render() {
+    async render() {
+        this.showLoading();
+        
+        try {
+            // Load dashboard data in parallel
+            const [dashboard, folders, recentFiles] = await Promise.all([
+                dataService.getDashboard(),
+                dataService.getFolders(),
+                dataService.getFiles({ limit: 4, sort: '-created_at' })
+            ]);
+
+            this.renderDashboard(dashboard, folders, recentFiles);
+            this.attachEventListeners();
+        } catch (error) {
+            console.error('Dashboard load error:', error);
+            this.renderFallbackDashboard();
+        }
+    }
+
+    showLoading() {
+        this.container.innerHTML = `
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>جاري تحميل لوحة التحكم...</p>
+            </div>
+        `;
+    }
+
+    renderDashboard(dashboard, folders, recentFiles) {
         this.container.innerHTML = `
             ${this.renderAIBanner()}
-            ${this.renderStats()}
+            ${this.renderStats(dashboard?.stats || this.getDefaultStats())}
             ${this.renderQuickActions()}
-            ${this.renderFolders()}
-            ${this.renderRecentFiles()}
+            ${this.renderFolders(folders || FALLBACK_FOLDERS)}
+            ${this.renderRecentFiles(recentFiles || FALLBACK_FILES)}
         `;
+    }
 
+    renderFallbackDashboard() {
+        this.container.innerHTML = `
+            <div class="alert alert-warning">
+                <h4>⚠️ تعذر تحميل البيانات من الخادم</h4>
+                <p>جاري عرض بيانات تجريبية. تأكد من تشغيل الخادم الخلفي.</p>
+                <button class="btn btn-primary" onclick="dashboardView.render()">إعادة المحاولة</button>
+            </div>
+            ${this.renderAIBanner()}
+            ${this.renderStats(this.getDefaultStats())}
+            ${this.renderQuickActions()}
+            ${this.renderFolders(FALLBACK_FOLDERS)}
+            ${this.renderRecentFiles(FALLBACK_FILES)}
+        `;
         this.attachEventListeners();
+    }
+
+    getDefaultStats() {
+        return {
+            total_exercises: 48,
+            total_plans: 12,
+            total_hours: 156,
+            progress_rate: 89
+        };
     }
 
     renderAIBanner() {
@@ -38,23 +91,21 @@ class DashboardView {
         `;
     }
 
-    renderStats() {
-        const stats = [
-            { value: '48', label: 'تمارين مخزنة', change: '+5', positive: true },
-            { value: '12', label: 'خطة تدريب', change: '+2', positive: true },
-            { value: '156', label: 'ساعة تدريب', change: '+12', positive: true },
-            { value: '89%', label: 'معدل التقدم', change: '+3%', positive: true }
+    renderStats(stats) {
+        const statItems = [
+            { key: 'total_exercises', label: 'تمارين مخزنة', icon: '🏋️' },
+            { key: 'total_plans', label: 'خطة تدريب', icon: '📋' },
+            { key: 'total_hours', label: 'ساعة تدريب', icon: '⏱️' },
+            { key: 'progress_rate', label: 'معدل التقدم', icon: '📈', suffix: '%' }
         ];
 
         return `
             <div class="stats-grid">
-                ${stats.map(s => `
+                ${statItems.map(s => `
                     <div class="stat-card">
-                        <div class="stat-value">${s.value}</div>
+                        <div class="stat-icon">${s.icon}</div>
+                        <div class="stat-value">${stats[s.key] || 0}${s.suffix || ''}</div>
                         <div class="stat-label">${s.label}</div>
-                        <div class="stat-change ${s.positive ? 'positive' : 'negative'}">
-                            ${s.positive ? '📈' : '📉'} ${s.change} هذا الشهر
-                        </div>
                     </div>
                 `).join('')}
             </div>
@@ -63,10 +114,10 @@ class DashboardView {
 
     renderQuickActions() {
         const actions = [
-            { icon: '➕', title: 'تمرين جديد', desc: 'ابدأ تمريناً جديداً', color: 'var(--accent)' },
-            { icon: '📋', title: 'خطة تدريب', desc: 'إنشاء خطة مخصصة', color: 'var(--purple)' },
-            { icon: '📊', title: 'تتبع التقدم', desc: 'سجل قياساتك', color: 'var(--info)' },
-            { icon: '🤖', title: 'تحليل AI', desc: 'احصل على تحليل ذكي', color: 'var(--warning)' }
+            { icon: '➕', title: 'تمرين جديد', desc: 'ابدأ تمريناً جديداً', color: 'var(--accent)', action: 'newWorkout' },
+            { icon: '📋', title: 'خطة تدريب', desc: 'إنشاء خطة مخصصة', color: 'var(--purple)', action: 'newPlan' },
+            { icon: '📊', title: 'تتبع التقدم', desc: 'سجل قياساتك', color: 'var(--info)', action: 'trackProgress' },
+            { icon: '🤖', title: 'تحليل AI', desc: 'احصل على تحليل ذكي', color: 'var(--warning)', action: 'aiAnalysis' }
         ];
 
         return `
@@ -78,7 +129,7 @@ class DashboardView {
             </div>
             <div class="quick-actions">
                 ${actions.map(a => `
-                    <div class="quick-action" onclick="dashboardView.handleQuickAction('${a.title}')">
+                    <div class="quick-action" onclick="dashboardView.handleQuickAction('${a.action}')">
                         <div class="quick-action-icon" style="background: ${a.color}20; color: ${a.color};">
                             ${a.icon}
                         </div>
@@ -90,7 +141,7 @@ class DashboardView {
         `;
     }
 
-    renderFolders() {
+    renderFolders(folders) {
         const folderIcons = {
             strength: '💪', cardio: '🏃', flexibility: '🧘',
             nutrition: '🥗', recovery: '🛌', plans: '📋'
@@ -113,18 +164,18 @@ class DashboardView {
                 </div>
             </div>
             <div class="folders-grid" id="foldersGrid">
-                ${MOCK_FOLDERS.map(f => `
+                ${folders.map(f => `
                     <div class="folder-card" onclick="folderView.openFolder(${f.id})">
                         <div class="folder-icon" style="background: ${folderColors[f.icon.replace(/[^a-z]/g, '')] || f.color}18;">
                             ${folderIcons[f.icon.replace(/[^a-z]/g, '')] || f.icon}
                         </div>
                         <div class="folder-name">${f.name}</div>
                         <div class="folder-meta">
-                            <span>📄 ${f.file_count} ملف</span>
+                            <span>📄 ${f.file_count || 0} ملف</span>
                             <span>🕐 منذ يوم</span>
                         </div>
                         <div class="folder-progress">
-                            <div class="folder-progress-bar" style="width: ${f.progress}%; background: linear-gradient(90deg, ${f.color}, ${f.color}88);"></div>
+                            <div class="folder-progress-bar" style="width: ${f.progress || 0}%; background: linear-gradient(90deg, ${f.color}, ${f.color}88);"></div>
                         </div>
                     </div>
                 `).join('')}
@@ -132,9 +183,8 @@ class DashboardView {
         `;
     }
 
-    renderRecentFiles() {
-        const recentFiles = MOCK_FILES.slice(0, 4);
-        const iconMap = { pdf: '📄', video: '🎥', image: '🖼️', spreadsheet: '📊' };
+    renderRecentFiles(files) {
+        const iconMap = { pdf: '📄', video: '🎥', image: '🖼️', spreadsheet: '📊', audio: '🎵' };
         const tagClass = { beginner: 'tag-beginner', intermediate: 'tag-intermediate', advanced: 'tag-advanced' };
         const tagName = { beginner: 'مبتدئ', intermediate: 'متوسط', advanced: 'متقدم' };
 
@@ -154,8 +204,8 @@ class DashboardView {
                     <div>الحجم</div>
                     <div></div>
                 </div>
-                ${recentFiles.map(f => `
-                    <div class="file-row" onclick="modalView.openFile('${f.name.toLowerCase().replace(/\s+/g, '_').substring(0, 10)}')">
+                ${files.slice(0, 4).map(f => `
+                    <div class="file-row" onclick="modalView.openFileById(${f.id})">
                         <div class="file-info">
                             <div class="file-icon ${f.file_type}">${iconMap[f.file_type] || '📄'}</div>
                             <div class="file-details">
@@ -164,11 +214,11 @@ class DashboardView {
                             </div>
                         </div>
                         <div><span class="tag ${tagClass[f.difficulty]}">${tagName[f.difficulty]}</span></div>
-                        <div class="file-date">${f.date}</div>
-                        <div class="file-size">${f.size}</div>
+                        <div class="file-date">${formatRelativeTime(f.created_at || f.date)}</div>
+                        <div class="file-size">${f.file_size ? formatFileSize(f.file_size) : f.size}</div>
                         <div class="file-actions">
-                            <button class="tooltip" data-tooltip="عرض">👁️</button>
-                            <button class="tooltip" data-tooltip="مفضل">⭐</button>
+                            <button class="tooltip" data-tooltip="عرض" onclick="event.stopPropagation(); modalView.openFileById(${f.id})">👁️</button>
+                            <button class="tooltip" data-tooltip="مفضل" onclick="event.stopPropagation()">⭐</button>
                         </div>
                     </div>
                 `).join('')}
@@ -177,12 +227,9 @@ class DashboardView {
     }
 
     attachEventListeners() {
-        // Search functionality
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.handleSearch(e.target.value);
-            });
+            searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
         }
     }
 
@@ -191,15 +238,8 @@ class DashboardView {
             this.render();
             return;
         }
-
-        const filtered = MOCK_FILES.filter(f => 
-            f.name.includes(query) || 
-            f.description.includes(query) ||
-            f.tags.some(t => t.includes(query))
-        );
-
-        // Would update view with filtered results
-        console.log('Search results:', filtered);
+        // Search would be implemented with API call
+        console.log('Search:', query);
     }
 
     handleQuickAction(action) {
@@ -214,7 +254,8 @@ class DashboardView {
     toggleView(btn) {
         document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        // View toggle logic would go here
     }
 }
 
-const dashboardView = new DashboardView();
+export const dashboardView = new DashboardView();

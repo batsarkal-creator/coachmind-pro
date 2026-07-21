@@ -2,7 +2,7 @@
 CoachMind Pro - Folder Endpoints
 File system-like folder management
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -16,17 +16,19 @@ router = APIRouter()
 @router.get("/", response_model=List[FolderResponse])
 async def list_folders(
     parent_id: int = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """List folders (optionally filtered by parent)"""
+    """List folders (optionally filtered by parent) with pagination"""
     query = db.query(Folder).filter(Folder.owner_id == current_user.id)
     if parent_id:
         query = query.filter(Folder.parent_id == parent_id)
     else:
         query = query.filter(Folder.parent_id.is_(None))
 
-    folders = query.order_by(Folder.sort_order).all()
+    folders = query.order_by(Folder.sort_order).offset(skip).limit(limit).all()
     return folders
 
 @router.post("/", response_model=FolderResponse, status_code=201)

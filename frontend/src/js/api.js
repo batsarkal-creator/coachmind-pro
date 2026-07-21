@@ -3,7 +3,7 @@
  * Handles all backend communication
  */
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://coachmind-backend.onrender.com/api/v1';
 
 class APIClient {
     constructor() {
@@ -107,9 +107,13 @@ class APIClient {
 
     // ==================== FOLDERS ====================
 
-    async getFolders(parentId = null) {
-        const params = parentId ? `?parent_id=${parentId}` : '';
-        return await this.request(`/folders/${params}`);
+    async getFolders(parentId = null, skip = 0, limit = 20) {
+        const params = new URLSearchParams();
+        if (parentId) params.append('parent_id', parentId);
+        if (skip) params.append('skip', skip);
+        if (limit) params.append('limit', limit);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return await this.request(`/folders/${query}`);
     }
 
     async getFolder(id) {
@@ -136,9 +140,16 @@ class APIClient {
 
     // ==================== FILES ====================
 
-    async getFiles(filters = {}) {
-        const params = new URLSearchParams(filters).toString();
-        return await this.request(`/files/?${params}`);
+    async getFiles(filters = {}, skip = 0, limit = 20) {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        });
+        if (skip) params.append('skip', skip);
+        if (limit) params.append('limit', limit);
+        return await this.request(`/files/?${params.toString()}`);
     }
 
     async getFile(id) {
@@ -175,9 +186,12 @@ class APIClient {
 
     // ==================== WORKOUTS ====================
 
-    async getWorkouts(status = null) {
-        const params = status ? `?status=${status}` : '';
-        return await this.request(`/workouts/${params}`);
+    async getWorkouts(status = null, skip = 0, limit = 20) {
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (skip) params.append('skip', skip);
+        if (limit) params.append('limit', limit);
+        return await this.request(`/workouts/?${params.toString()}`);
     }
 
     async getWorkout(id) {
@@ -244,9 +258,16 @@ class APIClient {
 
     // ==================== EXERCISES ====================
 
-    async getExercises(filters = {}) {
-        const params = new URLSearchParams(filters).toString();
-        return await this.request(`/exercises/?${params}`);
+    async getExercises(filters = {}, skip = 0, limit = 20) {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        });
+        if (skip) params.append('skip', skip);
+        if (limit) params.append('limit', limit);
+        return await this.request(`/exercises/?${params.toString()}`);
     }
 
     async getExercise(id) {
@@ -255,4 +276,4 @@ class APIClient {
 }
 
 // Global API instance
-const api = new APIClient();
+export const api = new APIClient();

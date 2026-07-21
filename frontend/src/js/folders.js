@@ -3,6 +3,8 @@
  * Folder browser with file management
  */
 
+import { formatRelativeTime, dataService, appState } from './data.js';
+
 class FolderView {
     constructor() {
         this.container = document.getElementById('contentArea');
@@ -10,19 +12,41 @@ class FolderView {
         this.breadcrumb = [];
     }
 
-    openFolder(folderId) {
-        const folder = MOCK_FOLDERS.find(f => f.id === folderId);
-        if (!folder) return;
+    async openFolder(folderId) {
+        this.showLoading();
+        try {
+            const folder = await dataService.getFolder(folderId);
+            this.currentFolderId = folderId;
+            this.breadcrumb = [{ id: null, name: 'المجلدات' }, { id: folderId, name: folder.name }];
+            appState.setView('folders', { folderId });
+            this.renderFolderView(folder);
+        } catch (error) {
+            console.error('Failed to load folder:', error);
+            this.renderError('تعذر تحميل المجلد');
+        }
+    }
 
-        this.currentFolderId = folderId;
-        this.breadcrumb = [{ id: null, name: 'المجلدات' }, { id: folderId, name: folder.name }];
+    showLoading() {
+        this.container.innerHTML = `
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>جاري تحميل المجلد...</p>
+            </div>
+        `;
+    }
 
-        appState.setView('folders', { folderId });
-        this.renderFolderView(folder);
+    renderError(message) {
+        this.container.innerHTML = `
+            <div class="alert alert-error">
+                <h4>⚠️ خطأ</h4>
+                <p>${message}</p>
+                <button class="btn btn-primary" onclick="dashboardView.render()">العودة للوحة التحكم</button>
+            </div>
+        `;
     }
 
     renderFolderView(folder) {
-        const folderFiles = MOCK_FILES.filter(f => f.folder_id === folder.id);
+        const folderFiles = folder.files || [];
 
         this.container.innerHTML = `
             ${this.renderBreadcrumb()}
@@ -55,7 +79,7 @@ class FolderView {
                     </div>
                     <div class="folder-header-title">
                         <h2>${folder.name}</h2>
-                        <p>${folder.description} • ${folder.file_count} ملف</p>
+                        <p>${folder.description} • ${folder.file_count || 0} ملف</p>
                     </div>
                 </div>
                 <div class="folder-header-actions">
@@ -77,6 +101,7 @@ class FolderView {
                 <div class="drop-zone-icon">📤</div>
                 <div class="drop-zone-text">اسحب الملفات هنا</div>
                 <div class="drop-zone-hint">أو انقر لاختيار الملفات من جهازك</div>
+                <input type="file" id="fileInput" multiple style="display: none;" onchange="folderView.handleFileSelect(event)">
             </div>
         `;
     }
@@ -120,7 +145,7 @@ class FolderView {
                             <div class="file-icon ${f.file_type}">${iconMap[f.file_type] || '📄'}</div>
                             <div class="file-details">
                                 <div class="file-name">${f.name}</div>
-                                <div class="file-desc">${f.description}</div>
+                                <div class="file-desc">${f.description || ''}</div>
                             </div>
                         </div>
                         <div>
@@ -128,9 +153,9 @@ class FolderView {
                             ${f.is_ai_generated ? '<span class="tag tag-ai">AI</span>' : ''}
                         </div>
                         <div class="file-date">
-                            ⭐ ${f.rating} (${f.view_count})
+                            ⭐ ${f.rating || 0} (${f.view_count || 0})
                         </div>
-                        <div class="file-size">${f.date}</div>
+                        <div class="file-size">${formatRelativeTime(f.created_at || f.date)}</div>
                         <div class="file-actions">
                             <button onclick="event.stopPropagation(); modalView.openFileById(${f.id})">👁️</button>
                             <button onclick="event.stopPropagation(); folderView.downloadFile(${f.id})">⬇️</button>
@@ -167,44 +192,74 @@ class FolderView {
 
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            appState.addToast({
-                type: 'info',
-                title: 'جاري الرفع',
-                message: `تم اكتشاف ${files.length} ملف`,
-                duration: 3000
-            });
+            this.uploadFiles(files);
+        }
+    }
+
+    handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            this.uploadFiles(files);
+        }
+    }
+
+    async uploadFiles(files) {
+        if (!this.currentFolderId) return;
+        
+        appState.setLoading(true);
+        const formData = new FormData();
+        for (let file of files) {
+            formData.append('file', file);
+        }
+
+        try {
+            for (let file of files) {
+                await dataService.uploadFile(this.currentFolderId, file);
+            }
+            appState.addToast({ type: 'success', title: 'تم الرفع', message: `تم رفع ${files.length} ملف بنجاح`, duration: 3000 });
+            this.openFolder(this.currentFolderId); // Refresh
+        } catch (error) {
+            console.error('Upload error:', error);
+            appState.addToast({ type: 'error', title: 'فشل الرفع', message: error.message, duration: 5000 });
+        } finally {
+            appState.setLoading(false);
         }
     }
 
     // Context Menu
     showContextMenu(e, fileId) {
         e.preventDefault();
-        // Would show custom context menu
         console.log('Context menu for file:', fileId);
     }
 
     // Actions
     showUploadModal() {
-        modalView.showCreateModal('file');
+        const input = document.getElementById('fileInput');
+        if (input) input.click();
     }
 
-    downloadFile(fileId) {
-        appState.addToast({
-            type: 'success',
-            title: 'تم التحميل',
-            message: 'جاري تحميل الملف...',
-            duration: 3000
-        });
+    async downloadFile(fileId) {
+        try {
+            const file = await dataService.getFile(fileId);
+            if (file.file_path) {
+                window.open(file.file_path, '_blank');
+            }
+        } catch (error) {
+            appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر تحميل الملف' });
+        }
     }
 
-    deleteFile(fileId) {
+    async deleteFile(fileId) {
         if (confirm('هل أنت متأكد من حذف هذا الملف؟')) {
-            appState.addToast({
-                type: 'success',
-                title: 'تم الحذف',
-                message: 'تم حذف الملف بنجاح',
-                duration: 3000
-            });
+            try {
+                await dataService.deleteFile(fileId);
+                appState.addToast({ type: 'success', title: 'تم الحذف', message: 'تم حذف الملف بنجاح', duration: 3000 });
+                if (this.currentFolderId) {
+                    this.openFolder(this.currentFolderId); // Refresh
+                }
+            } catch (error) {
+                appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر حذف الملف' });
+            }
         }
     }
 
@@ -213,4 +268,4 @@ class FolderView {
     }
 }
 
-const folderView = new FolderView();
+export const folderView = new FolderView();

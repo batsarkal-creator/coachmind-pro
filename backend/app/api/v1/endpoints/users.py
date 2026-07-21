@@ -13,6 +13,19 @@ from app.api.v1.endpoints.auth import get_current_active_user
 
 router = APIRouter()
 
+@router.post("/seed")
+async def seed_database(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Seed database with initial data (admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="يتطلب صلاحيات مدير")
+    
+    from app.seed import seed_database
+    seed_database()
+    return {"message": "تم تهيئة قاعدة البيانات بنجاح"}
+
 @router.get("/", response_model=List[UserResponse])
 async def list_users(
     skip: int = 0,

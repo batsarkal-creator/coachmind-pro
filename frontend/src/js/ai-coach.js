@@ -1,7 +1,9 @@
 /**
  * CoachMind Pro - AI Coach Module
- * Manages AI insights panel and modal interactions
+ * Manages AI insights panel and modal interactions with real API
  */
+
+import { formatRelativeTime, dataService, appState } from './data.js';
 
 class AICoachView {
     constructor() {
@@ -15,7 +17,7 @@ class AICoachView {
 
     init() {
         this.toggle.addEventListener('click', () => this.togglePanel());
-        this.renderInsights();
+        this.loadInsights();
     }
 
     togglePanel() {
@@ -23,17 +25,36 @@ class AICoachView {
         this.panel.classList.toggle('collapsed', this.isCollapsed);
     }
 
-    renderInsights() {
-        const insights = MOCK_AI_INSIGHTS;
+    async loadInsights() {
+        try {
+            const insights = await dataService.getInsights(10, false);
+            this.renderInsights(insights);
+        } catch (error) {
+            console.error('Failed to load insights:', error);
+            this.renderFallbackInsights();
+        }
+    }
+
+    renderInsights(insights) {
+        if (!insights || insights.length === 0) {
+            this.panelBody.innerHTML = `
+                <div class="empty-state" style="padding: 20px;">
+                    <div class="icon">🤖</div>
+                    <p>لا توجد توصيات حالياً</p>
+                    <button class="btn btn-primary btn-sm" onclick="aiCoachView.loadInsights()">تحديث</button>
+                </div>
+            `;
+            return;
+        }
 
         this.panelBody.innerHTML = insights.map(insight => `
             <div class="insight-item ${insight.is_read ? '' : 'unread'}" data-id="${insight.id}">
                 <div class="insight-priority ${this.getPriorityClass(insight.priority)}"></div>
-                <div class="insight-icon ${insight.type}">${insight.icon}</div>
+                <div class="insight-icon ${insight.insight_type}">${this.getIcon(insight.insight_type)}</div>
                 <div class="insight-content">
                     <div class="insight-title">${insight.title}</div>
                     <div class="insight-text">${insight.content}</div>
-                    <div class="insight-time">🕐 ${insight.time}</div>
+                    <div class="insight-time">🕐 ${formatRelativeTime(insight.created_at)}</div>
                     <div class="insight-actions">
                         <button class="insight-action-btn" onclick="aiCoachView.handleAction(${insight.id}, 'read')">
                             ✓ تم القراءة
@@ -47,77 +68,103 @@ class AICoachView {
         `).join('');
     }
 
+    renderFallbackInsights() {
+        this.panelBody.innerHTML = `
+            <div class="empty-state" style="padding: 20px;">
+                <div class="icon">⚠️</div>
+                <p>تعذر تحميل التوصيات من الخادم</p>
+                <button class="btn btn-primary btn-sm" onclick="aiCoachView.loadInsights()">إعادة المحاولة</button>
+            </div>
+        `;
+    }
+
     getPriorityClass(priority) {
         if (priority >= 4) return 'high';
         if (priority >= 2) return 'medium';
         return 'low';
     }
 
-    handleAction(insightId, action) {
-        const insight = MOCK_AI_INSIGHTS.find(i => i.id === insightId);
-        if (!insight) return;
+    getIcon(type) {
+        const icons = {
+            tip: '💡',
+            warning: '⚠️',
+            info: '📊',
+            goal: '🎯',
+            recommendation: '📋',
+            analysis: '🔍'
+        };
+        return icons[type] || '💡';
+    }
 
+    async handleAction(insightId, action) {
         if (action === 'read') {
-            insight.is_read = true;
-            this.renderInsights();
-            appState.addToast({
-                type: 'success',
-                title: 'تم التحديث',
-                message: 'تم تحديد التوصية كمقروءة',
-                duration: 2000
-            });
+            try {
+                await dataService.markInsightRead(insightId);
+                appState.addToast({
+                    type: 'success',
+                    title: 'تم التحديث',
+                    message: 'تم تحديد التوصية كمقروءة',
+                    duration: 2000
+                });
+                this.loadInsights(); // Refresh
+            } catch (error) {
+                appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر تحديث الحالة' });
+            }
         } else if (action === 'details') {
-            modalView.showInsightDetails(insight);
+            const insights = await dataService.getInsights(20);
+            const insight = insights.find(i => i.id === insightId);
+            if (insight) {
+                modalView.showInsightDetails(insight);
+            }
         }
     }
 
     addInsight(insight) {
-        MOCK_AI_INSIGHTS.unshift({
-            ...insight,
-            id: Date.now(),
-            time: 'الآن',
-            is_read: false
-        });
-        this.renderInsights();
-
-        // Show notification
-        appState.addToast({
-            type: 'info',
-            title: 'توصية جديدة',
-            message: insight.title,
-            duration: 5000
-        });
+        // Would call API to create insight, then refresh
+        this.loadInsights();
     }
 
-    // Simulate AI generating insights
-    simulateAIInsight() {
-        const templates = [
-            {
-                title: 'وقت التمرين الأمثل',
-                content: 'بناءً على بياناتك، أفضل وقت للتمرين هو الساعة 6 مساءً حيث أداؤك يكون بذروته.',
-                type: 'tip',
-                priority: 2,
-                icon: '⏰'
-            },
-            {
-                title: 'تنبيه: إرهاق زائد',
-                content: 'لاحظت علامات إرهاق زائد. أنصح بيوم راحة كامل قبل التمرين القادم.',
-                type: 'warning',
-                priority: 5,
-                icon: '🚨'
-            },
-            {
-                title: 'هدف أسبوعي محقق!',
-                content: 'مبروك! أكملت هدفك الأسبوعي من 4 جلسات تدريب. استمر في هذا الزخم!',
-                type: 'goal',
-                priority: 1,
-                icon: '🎉'
-            }
-        ];
+    // Trigger AI analysis for current user
+    async simulateAIInsight() {
+        appState.addToast({ type: 'info', title: 'جاري التحليل', message: 'المدرب الذكي يحلل بياناتك...' });
+        
+        try {
+            // Get user metrics and recent workouts for analysis
+            const user = await dataService.getCurrentUser();
+            const workouts = await dataService.getWorkouts('completed');
+            
+            const workoutData = {
+                total_volume: workouts.reduce((sum, w) => sum + (w.total_volume || 0), 0),
+                avg_heart_rate: workouts.reduce((sum, w) => sum + (w.avg_heart_rate || 0), 0) / Math.max(workouts.length, 1),
+                max_heart_rate: Math.max(...workouts.map(w => w.max_heart_rate || 0), 0),
+                exercises: workouts.flatMap(w => w.exercises || []),
+                avg_intensity: 0.75
+            };
 
-        const random = templates[Math.floor(Math.random() * templates.length)];
-        this.addInsight(random);
+            const userMetrics = {
+                resting_heart_rate: user.resting_heart_rate || 70,
+                avg_volume: workoutData.total_volume / Math.max(workouts.length, 1),
+                last_workout_date: workouts[0]?.completed_at || new Date().toISOString(),
+                hrv: user.hrv || 50,
+                baseline_hrv: user.baseline_hrv || 55,
+                sleep_hours: user.sleep_hours || 7,
+                weekly_sessions: workouts.length
+            };
+
+            const result = await dataService.analyzeWorkout(workoutData, userMetrics);
+            
+            appState.addToast({ 
+                type: 'success', 
+                title: 'تم التحليل', 
+                message: 'تم إنشاء توصيات جديدة بناءً على بياناتك' 
+            });
+            
+            this.loadInsights(); // Refresh to show new insights
+        } catch (error) {
+            console.error('AI Analysis error:', error);
+            appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر إجراء التحليل' });
+        }
     }
 }
 
-const aiCoachView = new AICoachView();
+export const aiCoachView = new AICoachView();

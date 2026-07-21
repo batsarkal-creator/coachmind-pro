@@ -272,3 +272,6 @@ class AITrainingPlanResponse(BaseModel):
     total_sessions: int
     estimated_duration_per_session: int
     ai_notes: List[str]
+
+# Resolve recursive types
+FolderResponse.model_rebuild()

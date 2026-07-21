@@ -2,7 +2,7 @@
 CoachMind Pro - File Endpoints
 File management with AI analysis
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File as FastAPIFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File as FastAPIFile, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -13,16 +13,28 @@ from app.api.v1.endpoints.auth import get_current_active_user, User
 
 router = APIRouter()
 
+# Allowed file types and max size (100MB)
+ALLOWED_TYPES = {
+    "video/mp4", "video/webm", "video/quicktime",
+    "application/pdf",
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "audio/mpeg", "audio/wav", "audio/mp3"
+}
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+
 @router.get("/", response_model=List[FileResponse])
 async def list_files(
     folder_id: Optional[int] = None,
     file_type: Optional[FileType] = None,
     difficulty: Optional[str] = None,
     search: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """List files with filters"""
+    """List files with filters and pagination"""
     query = db.query(File)
 
     if folder_id:
@@ -34,7 +46,7 @@ async def list_files(
     if search:
         query = query.filter(File.name.contains(search))
 
-    files = query.order_by(File.created_at.desc()).all()
+    files = query.order_by(File.created_at.desc()).offset(skip).limit(limit).all()
     return files
 
 @router.post("/", response_model=FileResponse, status_code=201)
@@ -70,7 +82,25 @@ async def upload_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Upload file to server"""
+    """Upload file to server with validation"""
+    # Validate file type
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"نوع الملف غير مدعوم. الأنواع المسموحة: فيديو، PDF، صور، جداول بيانات، صوت"
+        )
+
+    # Validate file size (read first chunk to check)
+    content = await file.read(MAX_FILE_SIZE + 1)
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"حجم الملف يتجاوز الحد المسموح (100 ميجابايت)"
+        )
+    
+    # Reset file pointer
+    await file.seek(0)
+
     # Determine file type
     content_type = file.content_type
     if "video" in content_type:
@@ -81,6 +111,8 @@ async def upload_file(
         file_type = FileType.IMAGE
     elif "spreadsheet" in content_type or "excel" in content_type:
         file_type = FileType.SPREADSHEET
+    elif "audio" in content_type:
+        file_type = FileType.AUDIO
     else:
         file_type = FileType.PDF
 
@@ -92,7 +124,7 @@ async def upload_file(
         file_type=file_type,
         mime_type=content_type,
         file_path=file_path,
-        file_size=0,  # Would get actual size
+        file_size=len(content),
         folder_id=folder_id,
         uploaded_by=current_user.id
     )

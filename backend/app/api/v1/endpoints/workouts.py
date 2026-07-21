@@ -2,9 +2,9 @@
 CoachMind Pro - Workout Endpoints
 Training session management and logging
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 
 from app.db.database import get_db
@@ -16,17 +16,18 @@ router = APIRouter()
 
 @router.get("/", response_model=List[WorkoutSessionResponse])
 async def list_workouts(
-    status: str = None,
-    limit: int = 50,
+    status: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """List user's workouts"""
+    """List user's workouts with pagination"""
     query = db.query(WorkoutSession).filter(WorkoutSession.user_id == current_user.id)
     if status:
         query = query.filter(WorkoutSession.status == status)
 
-    workouts = query.order_by(WorkoutSession.created_at.desc()).limit(limit).all()
+    workouts = query.order_by(WorkoutSession.created_at.desc()).offset(skip).limit(limit).all()
     return workouts
 
 @router.post("/", response_model=WorkoutSessionResponse, status_code=201)
