@@ -3,6 +3,8 @@
  * Real API integration with local state management
  */
 
+import { api } from './api.js';
+
 // ==================== STATE MANAGEMENT ====================
 
 class AppState {
