@@ -242,10 +242,8 @@ class FolderView {
 
     async downloadFile(fileId) {
         try {
-            const file = await dataService.getFile(fileId);
-            if (file.file_path) {
-                window.open(file.file_path, '_blank');
-            }
+            const downloadUrl = await dataService.getDownloadUrl(fileId);
+            window.open(downloadUrl, '_blank');
         } catch (error) {
             appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر تحميل الملف' });
         }

@@ -3,7 +3,7 @@
  * Renders dashboard view with stats, folders, and recent files using real API
  */
 
-import { formatRelativeTime, formatFileSize, dataService, appState, FALLBACK_FOLDERS, FALLBACK_FILES } from './data.js';
+import { formatRelativeTime, formatFileSize, getDifficultyClass, getDifficultyName, dataService, appState, FALLBACK_FOLDERS, FALLBACK_FILES } from './data.js';
 
 class DashboardView {
     constructor() {
@@ -14,12 +14,15 @@ class DashboardView {
         this.showLoading();
         
         try {
-            // Load dashboard data in parallel
             const [dashboard, folders, recentFiles] = await Promise.all([
                 dataService.getDashboard(),
                 dataService.getFolders(),
                 dataService.getFiles({ limit: 4, sort: '-created_at' })
             ]);
+
+            // Update folder count badge
+            const folderBadge = document.getElementById('folderCount');
+            if (folderBadge && folders) folderBadge.textContent = folders.length;
 
             this.renderDashboard(dashboard, folders, recentFiles);
             this.attachEventListeners();
@@ -233,22 +236,299 @@ class DashboardView {
         }
     }
 
-    handleSearch(query) {
-        if (!query) {
+    async handleSearch(query) {
+        if (!query || query.length < 2) {
             this.render();
             return;
         }
-        // Search would be implemented with API call
-        console.log('Search:', query);
+
+        this.container.innerHTML = `
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="icon">🔍</span>
+                    نتائج البحث: "${query}"
+                </div>
+                <button class="btn" onclick="dashboardView.render()">رجوع</button>
+            </div>
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>جاري البحث...</p>
+            </div>
+        `;
+
+        try {
+            const [exercises, files] = await Promise.all([
+                dataService.getExercises({ search: query }, 0, 20),
+                dataService.getFiles({ search: query }, 0, 20)
+            ]);
+
+            let html = `
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">🔍</span>
+                        نتائج البحث: "${query}"
+                    </div>
+                    <button class="btn" onclick="dashboardView.render()">رجوع</button>
+                </div>
+            `;
+
+            if (exercises && exercises.length > 0) {
+                html += `
+                    <div class="section-header">
+                        <div class="section-title"><span class="icon">🏋️</span> التمارين (${exercises.length})</div>
+                    </div>
+                    <div class="files-list">
+                        ${exercises.map(e => `
+                            <div class="file-row">
+                                <div class="file-info">
+                                    <div class="file-icon" style="background:var(--accent-glow);font-size:20px;">🏋️</div>
+                                    <div class="file-details">
+                                        <div class="file-name">${e.name} (${e.name_en || ''})</div>
+                                        <div class="file-desc">${e.primary_muscle || ''}</div>
+                                    </div>
+                                </div>
+                                <div><span class="tag ${getDifficultyClass(e.difficulty)}">${getDifficultyName(e.difficulty)}</span></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            if (files && files.length > 0) {
+                const iconMap = { pdf: '📄', video: '🎥', image: '🖼️', spreadsheet: '📊' };
+                html += `
+                    <div class="section-header" style="margin-top:24px;">
+                        <div class="section-title"><span class="icon">📁</span> الملفات (${files.length})</div>
+                    </div>
+                    <div class="files-list">
+                        ${files.map(f => `
+                            <div class="file-row" onclick="modalView.openFileById(${f.id})">
+                                <div class="file-info">
+                                    <div class="file-icon">${iconMap[f.file_type] || '📄'}</div>
+                                    <div class="file-details">
+                                        <div class="file-name">${f.name}</div>
+                                        <div class="file-desc">${f.description || ''}</div>
+                                    </div>
+                                </div>
+                                <div class="file-date">${formatRelativeTime(f.created_at)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            if ((!exercises || exercises.length === 0) && (!files || files.length === 0)) {
+                html += `
+                    <div class="empty-state" style="padding:40px;">
+                        <div class="icon" style="font-size:48px;">🔍</div>
+                        <h3>لا توجد نتائج</h3>
+                        <p>جرب كلمات بحث مختلفة</p>
+                    </div>
+                `;
+            }
+
+            this.container.innerHTML = html;
+        } catch (error) {
+            console.error('Search error:', error);
+            this.container.innerHTML = `
+                <div class="empty-state" style="padding:40px;">
+                    <div class="icon" style="font-size:48px;">⚠️</div>
+                    <h3>خطأ في البحث</h3>
+                    <p>تعذر إجراء البحث. حاول مرة أخرى.</p>
+                    <button class="btn btn-primary" onclick="dashboardView.render()">رجوع</button>
+                </div>
+            `;
+        }
     }
 
     handleQuickAction(action) {
-        appState.addToast({
-            type: 'info',
-            title: 'قيد التنفيذ',
-            message: `جاري فتح: ${action}`,
-            duration: 3000
-        });
+        switch(action) {
+            case 'newWorkout':
+                this.showNewWorkoutModal();
+                break;
+            case 'newPlan':
+                this.showNewPlanModal();
+                break;
+            case 'trackProgress':
+                this.showProgressModal();
+                break;
+            case 'aiAnalysis':
+                window.aiCoachView.simulateAIInsight();
+                break;
+        }
+    }
+
+    async showNewWorkoutModal() {
+        const exercises = await dataService.getExercises({}, 0, 100);
+        const exerciseOptions = (exercises || []).map(e =>
+            `<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+                <input type="checkbox" name="exercises" value="${e.id}" data-name="${e.name}">
+                <span>${e.name} (${e.name_en || ''})</span>
+            </label>`
+        ).join('');
+
+        window.modalView.open('تمرين جديد', `
+            <div class="form-group">
+                <label class="form-label">اسم التمرين</label>
+                <input type="text" class="form-input" id="workoutName" placeholder="مثال: تمارين الصدر والأكتاف">
+            </div>
+            <div class="form-group">
+                <label class="form-label">اختر التمارين</label>
+                <div style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+                    ${exerciseOptions || '<p>لا توجد تمارين متاحة</p>'}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">المجموعات</label>
+                    <input type="number" class="form-input" id="workoutSets" value="3" min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">التكرارات</label>
+                    <input type="number" class="form-input" id="workoutReps" value="10" min="1">
+                </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="dashboardView.createWorkout()">
+                ➕ إنشاء التمرين
+            </button>
+        `);
+    }
+
+    async createWorkout() {
+        const name = document.getElementById('workoutName')?.value || 'تمرين جديد';
+        const sets = parseInt(document.getElementById('workoutSets')?.value) || 3;
+        const reps = parseInt(document.getElementById('workoutReps')?.value) || 10;
+        const checked = document.querySelectorAll('input[name="exercises"]:checked');
+
+        const exercises = Array.from(checked).map(cb => ({
+            exercise_id: parseInt(cb.value),
+            name: cb.dataset.name,
+            sets: sets,
+            reps: reps,
+            weight: 0
+        }));
+
+        if (exercises.length === 0) {
+            appState.addToast({ type: 'warning', title: 'تنبيه', message: 'اختر تمريناً واحداً على الأقل' });
+            return;
+        }
+
+        try {
+            await dataService.createWorkout({ name, exercises, notes: '' });
+            window.modalView.close();
+            appState.addToast({ type: 'success', title: 'تم الإنشاء', message: 'تم إنشاء التمرين بنجاح' });
+        } catch (error) {
+            appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر إنشاء التمرين' });
+        }
+    }
+
+    showNewPlanModal() {
+        window.modalView.open('خطة تدريب جديدة', `
+            <div class="form-group">
+                <label class="form-label">اسم الخطة</label>
+                <input type="text" class="form-input" id="planName" placeholder="مثال: خطة بناء عضلات 8 أسابيع">
+            </div>
+            <div class="form-group">
+                <label class="form-label">الهدف</label>
+                <select class="form-input" id="planGoal">
+                    <option value="muscle_gain">بناء عضلات</option>
+                    <option value="fat_loss">حرق دهون</option>
+                    <option value="endurance">تحمل</option>
+                    <option value="strength">قوة</option>
+                    <option value="flexibility">مرونة</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">المدة (أسابيع)</label>
+                    <input type="number" class="form-input" id="planWeeks" value="8" min="1" max="52">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">أيام/أسبوع</label>
+                    <input type="number" class="form-input" id="planDays" value="4" min="1" max="7">
+                </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="dashboardView.generateAIPlan()">
+                🤖 إنشاء خطة بالذكاء الاصطناعي
+            </button>
+        `);
+    }
+
+    async generateAIPlan() {
+        const name = document.getElementById('planName')?.value || 'خطة تدريب';
+        const goal = document.getElementById('planGoal')?.value || 'muscle_gain';
+        const weeks = parseInt(document.getElementById('planWeeks')?.value) || 8;
+        const days = parseInt(document.getElementById('planDays')?.value) || 4;
+
+        try {
+            const result = await dataService.generateTrainingPlan({
+                name, goal, duration_weeks: weeks, days_per_week: days
+            });
+            window.modalView.close();
+            appState.addToast({ type: 'success', title: 'تم الإنشاء', message: 'تم إنشاء الخطة بنجاح' });
+        } catch (error) {
+            appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر إنشاء الخطة. تأكد من تشغيل الخادم.' });
+        }
+    }
+
+    showProgressModal() {
+        window.modalView.open('تسجيل التقدم', `
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">الوزن (كجم)</label>
+                    <input type="number" class="form-input" id="progressWeight" step="0.1" placeholder="75.5">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">نسبة الدهون %</label>
+                    <input type="number" class="form-input" id="progressBodyFat" step="0.1" placeholder="15">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">العضلات (كجم)</label>
+                    <input type="number" class="form-input" id="progressMuscle" step="0.1" placeholder="35">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">الطاقة (1-10)</label>
+                    <input type="number" class="form-input" id="progressEnergy" min="1" max="10" placeholder="8">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">ملاحظات</label>
+                <textarea class="form-input" id="progressNotes" rows="3" placeholder="شعور ممتاز اليوم..."></textarea>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="dashboardView.saveProgress()">
+                💾 حفظ التقدم
+            </button>
+        `);
+    }
+
+    async saveProgress() {
+        const data = {};
+        const weight = document.getElementById('progressWeight')?.value;
+        const bodyFat = document.getElementById('progressBodyFat')?.value;
+        const muscle = document.getElementById('progressMuscle')?.value;
+        const energy = document.getElementById('progressEnergy')?.value;
+        const notes = document.getElementById('progressNotes')?.value;
+
+        if (weight) data.weight = parseFloat(weight);
+        if (bodyFat) data.body_fat = parseFloat(bodyFat);
+        if (muscle) data.muscle_mass = parseFloat(muscle);
+        if (energy) data.energy_level = parseInt(energy);
+        if (notes) data.notes = notes;
+
+        if (Object.keys(data).length === 0) {
+            appState.addToast({ type: 'warning', title: 'تنبيه', message: 'أدخل قيماً واحدة على الأقل' });
+            return;
+        }
+
+        try {
+            await dataService.createProgressLog(data);
+            window.modalView.close();
+            appState.addToast({ type: 'success', title: 'تم الحفظ', message: 'تم تسجيل تقدمك بنجاح' });
+        } catch (error) {
+            appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر حفظ البيانات' });
+        }
     }
 
     toggleView(btn) {

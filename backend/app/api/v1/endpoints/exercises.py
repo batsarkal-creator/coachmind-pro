@@ -38,7 +38,12 @@ async def list_exercises(
     if difficulty:
         query = query.filter(Exercise.difficulty == difficulty)
     if search:
-        query = query.filter(Exercise.name.contains(search))
+        from sqlalchemy import or_
+        query = query.filter(or_(
+            Exercise.name.contains(search),
+            Exercise.name_en.contains(search),
+            Exercise.primary_muscle.contains(search)
+        ))
 
     exercises = query.order_by(Exercise.popularity.desc()).offset(skip).limit(limit).all()
     return exercises

@@ -100,27 +100,18 @@ class ModalView {
     }
 
     showCreateModal(type) {
-        const options = {
-            file: [
-                { icon: '📄', title: 'ملف PDF', desc: 'رفع ملف PDF' },
-                { icon: '🎥', title: 'فيديو تدريبي', desc: 'رفع فيديو توضيحي' },
-                { icon: '📊', title: 'جدول بيانات', desc: 'إنشاء جدول Excel' },
-                { icon: '🖼️', title: 'صور توضيحية', desc: 'رفع صور' }
-            ],
-            plan: [
-                { icon: '💪', title: 'خطة بناء عضلات', desc: '3-6 أيام/أسبوع' },
-                { icon: '🔥', title: 'خطة حرق دهون', desc: 'HIIT + كارديو' },
-                { icon: '🏃', title: 'خطة تحمل', desc: 'تدريب marathon' },
-                { icon: '🤖', title: 'خطة AI مخصصة', desc: 'حسب بياناتك' }
-            ]
-        };
-
-        const items = options[type] || options.file;
+        const items = [
+            { icon: '💪', title: 'تمرين جديد', desc: 'إنشاء تمرين مخصص', action: 'dashboardView.showNewWorkoutModal()' },
+            { icon: '📋', title: 'خطة تدريب', desc: 'خطة بالذكاء الاصطناعي', action: 'dashboardView.showNewPlanModal()' },
+            { icon: '📊', title: 'تسجيل التقدم', desc: 'قياسات-body', action: 'dashboardView.showProgressModal()' },
+            { icon: '📁', title: 'مجلد جديد', desc: 'تنظيم ملفاتك', action: 'modalView.showCreateFolderModal()' }
+        ];
 
         this.open('إنشاء جديد', `
             <div style="display:grid; gap:12px;">
                 ${items.map(item => `
                     <button class="btn" style="padding:18px; justify-content:flex-start; gap:16px; text-align:right;"
+                            onclick="${item.action}; modalView.close();"
                             onmouseover="this.style.borderColor='var(--accent)'" 
                             onmouseout="this.style.borderColor='var(--border)'">
                         <span style="font-size:28px;">${item.icon}</span>
@@ -137,17 +128,55 @@ class ModalView {
     renderModalActions() {
         return `
             <div style="display:flex; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid var(--border);">
-                <button class="btn btn-primary" style="flex:1; justify-content:center;">
-                    ▶️ بدء التمرين
-                </button>
-                <button class="btn" style="flex:1; justify-content:center;">
-                    📥 تحميل PDF
-                </button>
-                <button class="btn" style="flex:1; justify-content:center;">
-                    ⭐ حفظ
+                <button class="btn btn-primary" style="flex:1; justify-content:center;" onclick="modalView.close()">
+                    ✅ إغلاق
                 </button>
             </div>
         `;
+    }
+
+    showCreateFolderModal() {
+        this.open('مجلد جديد', `
+            <div class="form-group">
+                <label class="form-label">اسم المجلد</label>
+                <input type="text" class="form-input" id="newFolderName" placeholder="مثال: تمارين الصدر">
+            </div>
+            <div class="form-group">
+                <label class="form-label">الأيقونة</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    ${['📁','💪','🏃','🧘','🥗','🛌','📋','🎯','⚡','🔥'].map(icon =>
+                        `<label style="cursor:pointer;"><input type="radio" name="folderIcon" value="${icon}" ${icon === '📁' ? 'checked' : ''} style="display:none;"><span style="font-size:28px;padding:4px;border:2px solid var(--border);border-radius:8px;display:block;" class="icon-option">${icon}</span></label>`
+                    ).join('')}
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">اللون</label>
+                <input type="color" id="newFolderColor" value="#3b82f6" style="width:60px;height:40px;border:none;cursor:pointer;">
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="modalView.createFolder()">
+                📁 إنشاء المجلد
+            </button>
+        `);
+    }
+
+    async createFolder() {
+        const name = document.getElementById('newFolderName')?.value?.trim();
+        const icon = document.querySelector('input[name="folderIcon"]:checked')?.value || '📁';
+        const color = document.getElementById('newFolderColor')?.value || '#3b82f6';
+
+        if (!name) {
+            appState.addToast({ type: 'warning', title: 'تنبيه', message: 'أدخل اسم المجلد' });
+            return;
+        }
+
+        try {
+            await dataService.createFolder({ name, icon, color, description: name });
+            this.close();
+            appState.addToast({ type: 'success', title: 'تم الإنشاء', message: 'تم إنشاء المجلد بنجاح' });
+            if (dashboardView) dashboardView.render();
+        } catch (error) {
+            appState.addToast({ type: 'error', title: 'خطأ', message: 'تعذر إنشاء المجلد' });
+        }
     }
 }
 
@@ -525,6 +554,9 @@ class App {
         // Render dashboard
         dashboardView.render();
 
+        // Update sidebar badges with real counts
+        this.updateBadges();
+
         // Load AI insights
         aiCoachView.loadInsights();
 
@@ -585,6 +617,7 @@ class App {
 
                 dashboardView.render();
                 aiCoachView.loadInsights();
+                this.updateBadges();
 
                 appState.addToast({
                     type: 'success',
@@ -601,6 +634,19 @@ class App {
                 if (btn) { btn.disabled = false; btn.textContent = 'دخول'; }
             }
         });
+    }
+
+    async updateBadges() {
+        try {
+            const [folders, exercises] = await Promise.all([
+                dataService.getFolders(),
+                dataService.getExercises()
+            ]);
+            const folderBadge = document.getElementById('folderCount');
+            const exerciseBadge = document.querySelector('[data-view="exercises"] .badge');
+            if (folderBadge && folders) folderBadge.textContent = folders.length;
+            if (exerciseBadge && exercises) exerciseBadge.textContent = exercises.length;
+        } catch (e) { /* ignore */ }
     }
 }
 

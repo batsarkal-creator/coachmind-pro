@@ -48,7 +48,11 @@ async def list_files(
     if difficulty:
         query = query.filter(File.difficulty == difficulty)
     if search:
-        query = query.filter(File.name.contains(search))
+        from sqlalchemy import or_
+        query = query.filter(or_(
+            File.name.contains(search),
+            File.description.contains(search)
+        ))
 
     files = query.order_by(File.created_at.desc()).offset(skip).limit(limit).all()
     return files
