@@ -5,7 +5,7 @@
 
 // Import utility functions and services
 import { api } from './api.js';
-import { formatRelativeTime, formatFileSize, getFileIcon, getDifficultyClass, getDifficultyName, dataService, appState } from './data.js';
+import { formatFileSize, getFileIcon, getDifficultyClass, getDifficultyName, dataService, appState } from './data.js';
 import { dashboardView } from './dashboard.js';
 import { folderView } from './folders.js';
 import { aiCoachView } from './ai-coach.js';

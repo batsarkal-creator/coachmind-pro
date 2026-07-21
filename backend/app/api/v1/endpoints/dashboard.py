@@ -38,13 +38,19 @@ async def get_dashboard(
     ).count()
     completion_rate = (completed / total_workouts * 100) if total_workouts > 0 else 0
 
+    avg_result = db.query(func.avg(WorkoutSession.performance_score)).filter(
+        WorkoutSession.user_id == current_user.id,
+        WorkoutSession.performance_score.isnot(None)
+    ).scalar()
+    avg_performance = round(avg_result, 1) if avg_result else 85.0
+
     stats = {
         "total_workouts": total_workouts,
         "total_exercises": total_exercises,
         "total_hours": round(total_hours, 1),
         "current_streak": 0,
         "completion_rate": round(completion_rate, 1),
-        "avg_performance": 85.0
+        "avg_performance": avg_performance
     }
 
     # Recent activities

@@ -5,13 +5,12 @@ Populates database with initial data
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal, engine, Base
 from app.models.models import (
-    User, Folder, File, Exercise, TrainingPlan,
+    User, Folder, File, Exercise,
     UserRole, DifficultyLevel, FileType
 )
 from app.api.v1.endpoints.auth import get_password_hash
 
 def seed_database():
-    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     try:

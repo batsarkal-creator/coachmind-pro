@@ -2,9 +2,8 @@
 CoachMind Pro - Backend API
 FastAPI-based REST API for AI Fitness Training Platform
 """
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from contextlib import asynccontextmanager
 import uvicorn
 import os
@@ -12,7 +11,6 @@ import os
 from app.core.config import settings
 from app.api.v1.router import api_router
 from app.db.database import engine, Base
-from app.services.ai_coach import AICoachService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

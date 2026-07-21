@@ -210,7 +210,7 @@ class DashboardView {
                             <div class="file-icon ${f.file_type}">${iconMap[f.file_type] || '📄'}</div>
                             <div class="file-details">
                                 <div class="file-name">${f.name}</div>
-                                <div class="file-desc">${f.description}</div>
+                                <div class="file-desc">${f.description || ''}</div>
                             </div>
                         </div>
                         <div><span class="tag ${tagClass[f.difficulty]}">${tagName[f.difficulty]}</span></div>
