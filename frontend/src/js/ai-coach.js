@@ -17,7 +17,6 @@ class AICoachView {
 
     init() {
         this.toggle.addEventListener('click', () => this.togglePanel());
-        this.loadInsights();
     }
 
     togglePanel() {

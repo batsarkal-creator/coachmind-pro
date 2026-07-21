@@ -484,13 +484,26 @@ class App {
         this.initialized = false;
     }
 
-    init() {
+    async init() {
         if (this.initialized) return;
 
         console.log('🧠 CoachMind Pro initializing...');
 
+        // Auto-login if no token
+        if (!api.token) {
+            try {
+                await api.login('demo', 'demo123');
+                console.log('✅ Auto-logged in as demo user');
+            } catch (e) {
+                console.warn('Auto-login failed:', e);
+            }
+        }
+
         // Render dashboard
         dashboardView.render();
+
+        // Load AI insights
+        aiCoachView.loadInsights();
 
         // Simulate periodic AI insights
         setInterval(() => {
