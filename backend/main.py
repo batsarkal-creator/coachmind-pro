@@ -2,9 +2,12 @@
 CoachMind Pro - Backend API
 FastAPI-based REST API for AI Fitness Training Platform
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import uvicorn
 import os
 
@@ -12,11 +15,23 @@ from app.core.config import settings
 from app.api.v1.router import api_router
 from app.db.database import engine, Base
 
+limiter = Limiter(key_func=get_remote_address)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler"""
-    # Startup
-    Base.metadata.create_all(bind=engine)
+    # Run migrations with Alembic
+    try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        print("✅ Database migrations applied")
+    except Exception as e:
+        # Fallback to create_all if alembic fails (e.g., first run)
+        print(f"⚠️ Alembic failed ({e}), falling back to create_all")
+        Base.metadata.create_all(bind=engine)
+
     print("🚀 CoachMind Pro API Started")
     print(f"📊 Database: {settings.DATABASE_URL}")
 
@@ -46,6 +61,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS - Read from environment variable
 cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,https://coachmind-pro.netlify.app").split(",")

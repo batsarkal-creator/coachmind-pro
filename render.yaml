@@ -21,6 +21,10 @@ services:
         fromDatabase:
           name: coachmind-db
           property: connectionString
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: DEMO_PASSWORD
+        generateValue: true
 
   - type: web
     name: coachmind-frontend

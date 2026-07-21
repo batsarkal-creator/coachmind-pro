@@ -1,4 +1,6 @@
 """Application Configuration"""
+import secrets
+import sys
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import List
@@ -12,7 +14,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./coachmind.db"
 
     # Security
-    SECRET_KEY: str = "coachmind-super-secret-key-2026-change-in-production"
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
@@ -25,6 +27,10 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+    def model_post_init(self, __context):
+        if not self.SECRET_KEY:
+            self.SECRET_KEY = secrets.token_hex(32)
 
 @lru_cache()
 def get_settings():

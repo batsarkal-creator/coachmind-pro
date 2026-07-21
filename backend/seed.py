@@ -2,6 +2,7 @@
 CoachMind Pro - Database Seeding Script
 Populates database with initial data
 """
+import os
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal, engine, Base
 from app.models.models import (
@@ -9,6 +10,9 @@ from app.models.models import (
     UserRole, DifficultyLevel, FileType
 )
 from app.api.v1.endpoints.auth import get_password_hash
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Change-Me-Now!2026")
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "Change-Me-Now!2026")
 
 def seed_database():
     db = SessionLocal()
@@ -18,7 +22,7 @@ def seed_database():
         admin = User(
             email="admin@coachmind.pro",
             username="admin",
-            hashed_password=get_password_hash("admin123"),
+            hashed_password=get_password_hash(ADMIN_PASSWORD),
             full_name="مدير النظام",
             role=UserRole.ADMIN,
             is_active=True
@@ -29,7 +33,7 @@ def seed_database():
         demo = User(
             email="demo@coachmind.pro",
             username="demo",
-            hashed_password=get_password_hash("demo123"),
+            hashed_password=get_password_hash(DEMO_PASSWORD),
             full_name="متدرب تجريبي",
             role=UserRole.ATHLETE,
             age=28,
@@ -98,22 +102,22 @@ def seed_database():
                 "tips": ["حافظ على البار قريباً من جسمك", "لا تدير ظهرك أبداً"]
             },
             {
-                "name": "السحب (Bench Pull)",
+                "name": "السحب",
                 "name_en": "Pull Up",
                 "category": "strength",
                 "primary_muscle": "الظهر",
-                "secondary_muscles": ["ال bíceps", "السواعد"],
+                "secondary_muscles": ["البايسبس", "السواعد"],
                 "equipment": ["بار علوي"],
                 "difficulty": DifficultyLevel.INTERMEDIATE,
-                "instructions": ["اعتنق ب Barclays بقبضة واسعة", "اسحب جسمك للأعلى حتى تصل ذقنك فوق البار", "أنزل ببطء"],
+                "instructions": ["امسك البار بقبضة واسعة", "اسحب جسمك للأعلى حتى تصل ذقنك فوق البار", "أنزل ببطء"],
                 "tips": ["لا تتأرجح", "ركز على شد لوحي الكتف"]
             },
             {
-                "name": "ال蹲 الأمامي",
+                "name": "السكوات الأمامي",
                 "name_en": "Front Squat",
                 "category": "strength",
                 "primary_muscle": "الفخذ",
-                "secondary_muscles": ["المؤخرة", "ال/core"],
+                "secondary_muscles": ["المؤخرة", "الكور"],
                 "equipment": ["بار", "راك"],
                 "difficulty": DifficultyLevel.ADVANCED,
                 "instructions": ["ضع البار على الكتفين الأماميين", "انزل ببطء مع الحفاظ على ظهر مستقيم", "ادفع للأعلى من الكعبيين"],
@@ -150,7 +154,7 @@ def seed_database():
                 "equipment": ["بار"],
                 "difficulty": DifficultyLevel.INTERMEDIATE,
                 "instructions": ["قف مستقيماً مع البار عند مستوى الكتفين", "ادفع البار للأعلى حتى تمدد الذراعين", "أنزل ببطء"],
-                "tips": ["لا تarch ظهرك", "شد البطن طوال التمرين"]
+                "tips": ["لا تسحب ظهرك", "شد البطن طوال التمرين"]
             },
             {
                 "name": "الرومانية",
@@ -168,7 +172,7 @@ def seed_database():
                 "name_en": "Barbell Row",
                 "category": "strength",
                 "primary_muscle": "الظهر",
-                "secondary_muscles": ["ال bíceps", "السواعد"],
+                "secondary_muscles": ["البايسبس", "السواعد"],
                 "equipment": ["بار"],
                 "difficulty": DifficultyLevel.INTERMEDIATE,
                 "instructions": ["انحنِ للأمام مع قبضة واسعة على البار", "اسحب البار نحو بطنك", "اضغط لوحي الكتف في الأعلى"],
@@ -186,12 +190,12 @@ def seed_database():
                 "tips": ["حافظ على ظهرك مستقيماً", "لا تتجاوز ركبتك أصابع قدمك"]
             },
             {
-                "name": "الـ Dip",
+                "name": "الديب",
                 "name_en": "Dips",
                 "category": "strength",
                 "primary_muscle": "الترايسبس",
                 "secondary_muscles": ["الصدر", "الأكتاف الأمامية"],
-                "equipment": ["-bars parallel"],
+                "equipment": [" bars مزدوجة"],
                 "difficulty": DifficultyLevel.INTERMEDIATE,
                 "instructions": ["امسك الـ bars وارفع جسمك", "أنزل ببطء حتى تصل زاوية 90 درجة", "ادفع للأعلى"],
                 "tips": ["لا تنزل أكثر من 90 درجة", "حافظ على الجسم عمودياً"]
@@ -259,7 +263,7 @@ def seed_database():
                 "secondary_muscles": ["الcore", "الفخذ"],
                 "equipment": ["سجادة"],
                 "difficulty": DifficultyLevel.BEGINNER,
-                "instructions": ["ابدأ بوضعية الت salute", "انتقل بسلاسة بين الوضعيات", "ركز على التنفس"],
+                "instructions": ["ابدأ بوضعية تحية الشمس", "انتقل بسلاسة بين الوضعيات", "ركز على التنفس"],
                 "tips": ["لا تقارن نفسك بالآخرين", "استمر يومياً"]
             },
             {
