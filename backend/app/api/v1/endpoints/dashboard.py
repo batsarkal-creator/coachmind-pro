@@ -64,16 +64,46 @@ async def get_dashboard(
             details=w.status
         ))
 
-    # AI Insights
-    insights = db.query(AIInsight).filter(
+    # AI Insights - convert to Pydantic
+    from app.schemas.schemas import AIInsightResponse, WorkoutSessionResponse as WSR
+    insights_raw = db.query(AIInsight).filter(
         AIInsight.user_id == current_user.id
     ).order_by(AIInsight.created_at.desc()).limit(5).all()
 
-    # Upcoming workouts
-    upcoming = db.query(WorkoutSession).filter(
+    insights = []
+    for i in insights_raw:
+        try:
+            insights.append(AIInsightResponse(
+                id=i.id, user_id=i.user_id, title=i.title, content=i.content,
+                insight_type=i.insight_type or "tip", priority=i.priority or 1,
+                is_read=i.is_read or False, is_actioned=i.is_actioned or False,
+                confidence_score=i.confidence_score, created_at=i.created_at
+            ))
+        except Exception:
+            pass
+
+    # Upcoming workouts - convert to Pydantic
+    upcoming_raw = db.query(WorkoutSession).filter(
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.status.in_(["planned", "in_progress"])
     ).order_by(WorkoutSession.scheduled_date).limit(3).all()
+
+    upcoming = []
+    for w in upcoming_raw:
+        try:
+            upcoming.append(WSR(
+                id=w.id, user_id=w.user_id, title=w.title or "تمرين",
+                description=w.description, scheduled_date=w.scheduled_date,
+                started_at=w.started_at, completed_at=w.completed_at,
+                duration_minutes=w.duration_minutes, exercises=w.exercises or [],
+                total_volume=w.total_volume, total_sets=w.total_sets or 0,
+                total_reps=w.total_reps or 0, avg_heart_rate=w.avg_heart_rate,
+                max_heart_rate=w.max_heart_rate, calories_burned=w.calories_burned,
+                status=w.status or "planned", ai_feedback=w.ai_feedback,
+                performance_score=w.performance_score, created_at=w.created_at
+            ))
+        except Exception:
+            pass
 
     from app.schemas.schemas import UserProfile, UserResponse
 

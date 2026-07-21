@@ -29,7 +29,24 @@ async def list_folders(
         query = query.filter(Folder.parent_id.is_(None))
 
     folders = query.order_by(Folder.sort_order).offset(skip).limit(limit).all()
-    return folders
+
+    result = []
+    for f in folders:
+        result.append({
+            "id": f.id,
+            "name": f.name,
+            "description": f.description,
+            "icon": f.icon,
+            "color": f.color,
+            "parent_id": f.parent_id,
+            "file_count": db.query(File).filter(File.folder_id == f.id).count(),
+            "total_size": f.total_size or 0,
+            "is_system": f.is_system or False,
+            "created_at": f.created_at,
+            "updated_at": f.updated_at,
+            "children": []
+        })
+    return result
 
 @router.post("/", response_model=FolderResponse, status_code=201)
 async def create_folder(
