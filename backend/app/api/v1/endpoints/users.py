@@ -5,6 +5,7 @@ User management and profile operations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime, timedelta, timezone
 
 from app.db.database import get_db
 from app.schemas.schemas import UserResponse, UserUpdate, UserProfile
@@ -12,6 +13,27 @@ from app.models.models import User, WorkoutSession, ProgressLog
 from app.api.v1.endpoints.auth import get_current_active_user
 
 router = APIRouter()
+
+def _calculate_streak(db: Session, user_id: int) -> int:
+    """Calculate current workout streak"""
+    today = datetime.now(timezone.utc).date()
+    streak = 0
+    check_date = today
+    for _ in range(365):
+        day_start = datetime.combine(check_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        day_end = day_start + timedelta(days=1)
+        has_workout = db.query(WorkoutSession).filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.status == "completed",
+            WorkoutSession.completed_at >= day_start,
+            WorkoutSession.completed_at < day_end
+        ).first()
+        if has_workout:
+            streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+    return streak
 
 @router.post("/seed")
 async def seed_database(
@@ -64,7 +86,7 @@ async def get_profile(
         **UserResponse.model_validate(current_user).model_dump(),
         total_workouts=total_workouts,
         total_hours=round(total_hours, 1),
-        current_streak=0  # Would calculate from workout history
+        current_streak=_calculate_streak(db, current_user.id)
     )
 
 @router.put("/profile", response_model=UserResponse)

@@ -5,13 +5,38 @@ Aggregated data for dashboard view
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.db.database import get_db
 from app.api.v1.endpoints.auth import get_current_active_user, User
 from app.models.models import WorkoutSession, AIInsight, File, Folder, Exercise
 
 router = APIRouter()
+
+def _calculate_streak(db: Session, user_id: int) -> int:
+    """Calculate current workout streak (consecutive days with completed workouts)"""
+    today = datetime.now(timezone.utc).date()
+    streak = 0
+    check_date = today
+
+    for _ in range(365):  # Max 1 year lookback
+        day_start = datetime.combine(check_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        day_end = day_start + timedelta(days=1)
+
+        has_workout = db.query(WorkoutSession).filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.status == "completed",
+            WorkoutSession.completed_at >= day_start,
+            WorkoutSession.completed_at < day_end
+        ).first()
+
+        if has_workout:
+            streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+
+    return streak
 
 @router.get("/")
 async def get_dashboard(
@@ -44,11 +69,14 @@ async def get_dashboard(
     ).scalar()
     avg_performance = round(avg_result, 1) if avg_result else 85.0
 
+    # Calculate real streak
+    current_streak = _calculate_streak(db, current_user.id)
+
     stats = {
         "total_workouts": total_workouts,
         "total_exercises": total_exercises,
         "total_hours": round(total_hours, 1),
-        "current_streak": 0,
+        "current_streak": current_streak,
         "completion_rate": round(completion_rate, 1),
         "avg_performance": avg_performance
     }
@@ -132,7 +160,7 @@ async def get_dashboard(
         "body_fat_percentage": current_user.body_fat_percentage,
         "total_workouts": total_workouts,
         "total_hours": round(total_hours, 1),
-        "current_streak": 0
+        "current_streak": current_streak
     }
 
     return {

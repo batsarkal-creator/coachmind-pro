@@ -24,11 +24,30 @@ async def analyze_workout(
     current_user: User = Depends(get_current_active_user)
 ):
     """Analyze workout performance with AI"""
+    from app.models.models import AIInsight
+    from datetime import datetime, timezone
+
     result = await ai_coach.analyze_workout_performance(
         request.workout_data,
         request.user_metrics,
         user_id=current_user.id
     )
+
+    # Persist insights to database
+    for insight in result.insights:
+        db_insight = AIInsight(
+            user_id=current_user.id,
+            title=insight.title,
+            content=insight.content,
+            insight_type=insight.insight_type.value if hasattr(insight.insight_type, 'value') else insight.insight_type,
+            priority=insight.priority,
+            confidence_score=insight.confidence_score,
+            is_read=False,
+            is_actioned=False
+        )
+        db.add(db_insight)
+    db.commit()
+
     return result
 
 @router.post("/analyze-recovery")
@@ -38,7 +57,24 @@ async def analyze_recovery(
     current_user: User = Depends(get_current_active_user)
 ):
     """Analyze recovery status"""
+    from app.models.models import AIInsight
+
     insights = await ai_coach.analyze_recovery_status(user_metrics, user_id=current_user.id)
+
+    # Persist insights to database
+    for insight in insights:
+        db_insight = AIInsight(
+            user_id=current_user.id,
+            title=insight.title,
+            content=insight.content,
+            insight_type=insight.insight_type.value if hasattr(insight.insight_type, 'value') else insight.insight_type,
+            priority=insight.priority,
+            is_read=False,
+            is_actioned=False
+        )
+        db.add(db_insight)
+    db.commit()
+
     return {"insights": [i.model_dump() for i in insights], "status": "analyzed"}
 
 @router.post("/generate-plan", response_model=AITrainingPlanResponse)
@@ -48,7 +84,25 @@ async def generate_training_plan(
     current_user: User = Depends(get_current_active_user)
 ):
     """Generate AI training plan"""
+    from app.models.models import TrainingPlan
+
     plan = await ai_coach.generate_training_plan(request)
+
+    # Save plan to database
+    db_plan = TrainingPlan(
+        name=plan.plan_name,
+        description=plan.description,
+        duration_weeks=request.duration_weeks,
+        days_per_week=request.days_per_week,
+        goal=request.goal,
+        difficulty=request.experience_level,
+        weeks=plan.weeks,
+        is_ai_generated=True,
+        created_by=current_user.id
+    )
+    db.add(db_plan)
+    db.commit()
+
     return plan
 
 @router.post("/predict-progress")

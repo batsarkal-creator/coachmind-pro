@@ -184,6 +184,10 @@ class APIClient {
         return await this.request(`/files/${id}`, { method: 'DELETE' });
     }
 
+    async downloadFile(id) {
+        return `${this.baseURL}/files/${id}/download`;
+    }
+
     // ==================== WORKOUTS ====================
 
     async getWorkouts(status = null, skip = 0, limit = 20) {

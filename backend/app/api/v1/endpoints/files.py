@@ -5,6 +5,8 @@ File management with AI analysis
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File as FastAPIFile, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import os
+import uuid
 
 from app.db.database import get_db
 from app.schemas.schemas import FileCreate, FileUpdate, FileResponse, FileType
@@ -12,6 +14,8 @@ from app.models.models import File, Folder
 from app.api.v1.endpoints.auth import get_current_active_user, User
 
 router = APIRouter()
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "uploads")
 
 # Allowed file types and max size (100MB)
 ALLOWED_TYPES = {
@@ -116,8 +120,14 @@ async def upload_file(
     else:
         file_type = FileType.PDF
 
-    # Save file (simplified - in production use cloud storage)
-    file_path = f"uploads/{current_user.id}/{file.filename}"
+    # Save file to disk
+    user_dir = os.path.join(UPLOAD_DIR, str(current_user.id))
+    os.makedirs(user_dir, exist_ok=True)
+    safe_name = f"{uuid.uuid4().hex}_{file.filename}"
+    file_path = os.path.join(user_dir, safe_name)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
 
     db_file = File(
         name=file.filename,
@@ -193,7 +203,39 @@ async def delete_file(
     if file.uploaded_by != current_user.id and current_user.role.value not in ("admin", "coach"):
         raise HTTPException(status_code=403, detail="لا تملك صلاحية حذف هذا الملف")
 
+    # Delete physical file from disk
+    if file.file_path and os.path.exists(file.file_path):
+        os.remove(file.file_path)
+
     db.delete(file)
     db.commit()
 
     return {"message": "تم حذف الملف بنجاح"}
+
+@router.get("/{file_id}/download")
+async def download_file(
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Download file"""
+    from fastapi.responses import FileResponse as FastAPIFileResponse
+
+    file = db.query(File).filter(File.id == file_id).first()
+    if not file:
+        raise HTTPException(status_code=404, detail="الملف غير موجود")
+
+    if file.uploaded_by != current_user.id and current_user.role.value not in ("admin", "coach"):
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية تحميل هذا الملف")
+
+    if not file.file_path or not os.path.exists(file.file_path):
+        raise HTTPException(status_code=404, detail="الملف الفعلي غير موجود على الخادم")
+
+    file.download_count += 1
+    db.commit()
+
+    return FastAPIFileResponse(
+        path=file.file_path,
+        filename=file.name,
+        media_type=file.mime_type or "application/octet-stream"
+    )

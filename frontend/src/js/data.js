@@ -206,6 +206,10 @@ class DataService {
         return result;
     }
 
+    async getDownloadUrl(id) {
+        return await api.downloadFile(id);
+    }
+
     // ==================== WORKOUTS ====================
 
     async getWorkouts(status = null, skip = 0, limit = 20) {
