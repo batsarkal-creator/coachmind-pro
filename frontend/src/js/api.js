@@ -23,9 +23,10 @@ class APIClient {
         localStorage.removeItem('coachmind_token');
     }
 
-    // Generic request method
+    // Generic request method with timeout
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
+        const timeout = options.timeout || 15000;
 
         const config = {
             ...options,
@@ -44,8 +45,17 @@ class APIClient {
             delete config.headers['Content-Type'];
         }
 
+        // Remove non-fetch options
+        delete config.timeout;
+
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        config.signal = controller.signal;
+
         try {
             const response = await fetch(url, config);
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({
@@ -54,11 +64,14 @@ class APIClient {
                 throw new Error(error.detail || `HTTP ${response.status}`);
             }
 
-            // Handle empty responses
             if (response.status === 204) return null;
 
             return await response.json();
         } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error('الخادم يستغرق وقتاً طويلاً. جرب مرة أخرى.');
+            }
             console.error('API Error:', error);
             throw error;
         }

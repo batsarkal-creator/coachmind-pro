@@ -15,9 +15,9 @@ class DashboardView {
         
         try {
             const [dashboard, folders, recentFiles] = await Promise.all([
-                dataService.getDashboard(),
-                dataService.getFolders(),
-                dataService.getFiles({ limit: 4, sort: '-created_at' })
+                dataService.getDashboard().catch(() => null),
+                dataService.getFolders().catch(() => null),
+                dataService.getFiles({ limit: 4 }).catch(() => null)
             ]);
 
             // Update folder count badge
@@ -167,21 +167,25 @@ class DashboardView {
                 </div>
             </div>
             <div class="folders-grid" id="foldersGrid">
-                ${folders.map(f => `
+                ${folders.map(f => {
+                    const iconStr = (f.icon || '').toString();
+                    const iconKey = iconStr.replace(/[^a-z]/g, '') || iconStr;
+                    return `
                     <div class="folder-card" onclick="folderView.openFolder(${f.id})">
-                        <div class="folder-icon" style="background: ${folderColors[f.icon.replace(/[^a-z]/g, '')] || f.color}18;">
-                            ${folderIcons[f.icon.replace(/[^a-z]/g, '')] || f.icon}
+                        <div class="folder-icon" style="background: ${folderColors[iconKey] || f.color || '#3b82f6'}18;">
+                            ${folderIcons[iconKey] || f.icon || '📁'}
                         </div>
-                        <div class="folder-name">${f.name}</div>
+                        <div class="folder-name">${f.name || ''}</div>
                         <div class="folder-meta">
                             <span>📄 ${f.file_count || 0} ملف</span>
                             <span>🕐 ${f.updated_at ? formatRelativeTime(f.updated_at) : 'منذ يوم'}</span>
                         </div>
                         <div class="folder-progress">
-                            <div class="folder-progress-bar" style="width: ${f.progress || 0}%; background: linear-gradient(90deg, ${f.color}, ${f.color}88);"></div>
+                            <div class="folder-progress-bar" style="width: ${f.progress || 0}%; background: linear-gradient(90deg, ${f.color || '#3b82f6'}, ${f.color || '#3b82f6'}88);"></div>
                         </div>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
     }

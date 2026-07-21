@@ -529,36 +529,15 @@ class App {
 
         console.log('🧠 CoachMind Pro initializing...');
 
-        // Auto-login if no token
-        if (!api.token) {
-            try {
-                await api.login('demo', 'demo123');
-                console.log('✅ Auto-logged in as demo user');
-            } catch (e) {
-                console.warn('Auto-login failed:', e);
-                this.showLoginModal();
-            }
-        } else {
-            // Verify existing token
-            try {
-                await api.getMe();
-            } catch (e) {
-                api.clearToken();
-                this.showLoginModal();
-            }
-        }
-
-        // Setup login form
+        // Setup login form immediately
         this.setupLoginForm();
 
-        // Render dashboard
-        dashboardView.render();
+        // Show dashboard immediately with fallback data
+        dashboardView.renderFallbackDashboard();
+        aiCoachView.renderFallbackInsights();
 
-        // Update sidebar badges with real counts
-        this.updateBadges();
-
-        // Load AI insights
-        aiCoachView.loadInsights();
+        // Try auto-login in background (non-blocking)
+        this.tryAutoLogin();
 
         // Simulate periodic AI insights
         setInterval(() => {
@@ -569,16 +548,33 @@ class App {
 
         this.initialized = true;
         console.log('✅ CoachMind Pro ready!');
+    }
 
-        // Welcome toast
-        setTimeout(() => {
-            appState.addToast({
-                type: 'success',
-                title: 'أهلاً بك في CoachMind Pro!',
-                message: 'المدرب الذكي جاهز لمساعدتك في تحقيق أهدافك',
-                duration: 6000
-            });
-        }, 1000);
+    async tryAutoLogin() {
+        if (!api.token) {
+            try {
+                await api.login('demo', 'demo123');
+                console.log('✅ Auto-logged in as demo user');
+                // Re-render with real data
+                dashboardView.render();
+                aiCoachView.loadInsights();
+                this.updateBadges();
+            } catch (e) {
+                console.warn('Auto-login failed:', e);
+                this.showLoginModal();
+            }
+        } else {
+            try {
+                await api.getMe();
+                // Token valid, load real data
+                dashboardView.render();
+                aiCoachView.loadInsights();
+                this.updateBadges();
+            } catch (e) {
+                api.clearToken();
+                this.showLoginModal();
+            }
+        }
     }
 
     showLoginModal() {
