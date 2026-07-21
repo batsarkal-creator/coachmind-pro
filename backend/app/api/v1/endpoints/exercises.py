@@ -13,6 +13,10 @@ from app.api.v1.endpoints.auth import get_current_active_user, User
 
 router = APIRouter()
 
+def _require_coach_or_admin(current_user: User):
+    if current_user.role.value not in ("coach", "admin"):
+        raise HTTPException(status_code=403, detail="يتطلب صلاحيات مدرب أو مدير")
+
 @router.get("/")
 async def list_exercises(
     category: Optional[str] = None,
@@ -63,7 +67,13 @@ async def create_exercise(
     current_user: User = Depends(get_current_active_user)
 ):
     """Add new exercise to library (coach/admin only)"""
-    exercise = Exercise(**exercise_data)
+    _require_coach_or_admin(current_user)
+
+    allowed_fields = {"name", "name_en", "description", "category", "primary_muscle",
+                      "secondary_muscles", "difficulty", "equipment", "video_url", "tips"}
+    filtered = {k: v for k, v in exercise_data.items() if k in allowed_fields}
+
+    exercise = Exercise(**filtered)
     db.add(exercise)
     db.commit()
     db.refresh(exercise)

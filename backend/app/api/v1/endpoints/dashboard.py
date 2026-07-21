@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from app.db.database import get_db
 from app.api.v1.endpoints.auth import get_current_active_user, User
-from app.models.models import WorkoutSession, AIInsight, File, Folder
+from app.models.models import WorkoutSession, AIInsight, File, Folder, Exercise
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ async def get_dashboard(
         WorkoutSession.user_id == current_user.id
     ).count()
 
-    total_exercises = db.query(File).count()
+    total_exercises = db.query(Exercise).count()
 
     total_hours_result = db.query(func.sum(WorkoutSession.duration_minutes)).filter(
         WorkoutSession.user_id == current_user.id

@@ -145,6 +145,10 @@ async def get_file(
     if not file:
         raise HTTPException(status_code=404, detail="الملف غير موجود")
 
+    # Check ownership or admin
+    if file.uploaded_by != current_user.id and current_user.role.value not in ("admin", "coach"):
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية عرض هذا الملف")
+
     # Increment view count
     file.view_count += 1
     db.commit()
@@ -163,6 +167,10 @@ async def update_file(
     if not file:
         raise HTTPException(status_code=404, detail="الملف غير موجود")
 
+    # Check ownership or admin
+    if file.uploaded_by != current_user.id and current_user.role.value not in ("admin", "coach"):
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية تعديل هذا الملف")
+
     for field, value in file_update.model_dump(exclude_unset=True).items():
         setattr(file, field, value)
 
@@ -180,6 +188,10 @@ async def delete_file(
     file = db.query(File).filter(File.id == file_id).first()
     if not file:
         raise HTTPException(status_code=404, detail="الملف غير موجود")
+
+    # Check ownership or admin
+    if file.uploaded_by != current_user.id and current_user.role.value not in ("admin", "coach"):
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية حذف هذا الملف")
 
     db.delete(file)
     db.commit()

@@ -34,6 +34,8 @@ async def list_users(
     current_user: User = Depends(get_current_active_user)
 ):
     """List all users (admin/coach only)"""
+    if current_user.role.value not in ("admin", "coach"):
+        raise HTTPException(status_code=403, detail="يتطلب صلاحيات مدير أو مدرب")
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
@@ -85,7 +87,9 @@ async def get_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get specific user by ID"""
+    """Get specific user by ID (own profile or admin/coach)"""
+    if current_user.id != user_id and current_user.role.value not in ("admin", "coach"):
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية عرض هذا الملف")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود")

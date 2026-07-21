@@ -392,7 +392,7 @@ class Navigation {
                         <div></div>
                     </div>
                     ${(exercises || []).map(e => `
-                        <div class="file-row" style="cursor:pointer;" onclick="modalView.openFileById(${e.id})">
+                        <div class="file-row" style="cursor:pointer;" onclick="modalView.open('${e.name}', '<div class=\\'workout-detail\\'><h5>📋 معلومات التمرين</h5><p>${e.name} (${e.name_en || ''})</p></div><div class=\\'workout-detail\\'><h5>💪 العضلة المستهدفة</h5><p>${e.primary_muscle || ''}</p></div><div class=\\'workout-detail\\'><h5>📊 المستوى</h5><p>${e.difficulty || ''}</p></div><div class=\\'workout-detail\\'><h5>📝 الوصف</h5><p>${e.description || 'تمرين'}</p></div>')">
                             <div class="file-info">
                                 <div class="file-icon" style="background: var(--accent-glow); font-size: 20px;">${getFileIcon(e.category)}</div>
                                 <div class="file-details">
