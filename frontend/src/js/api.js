@@ -3,7 +3,7 @@
  * Handles all backend communication
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://coachmind-pro-1.onrender.com/api/v1';
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || 'https://coachmind-pro-1.onrender.com/api/v1';
 
 class APIClient {
     constructor() {
