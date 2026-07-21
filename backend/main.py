@@ -21,6 +21,21 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     print("🚀 CoachMind Pro API Started")
     print(f"📊 Database: {settings.DATABASE_URL}")
+
+    # Auto-seed if database is empty
+    from app.db.database import SessionLocal
+    from app.models.models import User
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            print("🌱 Database empty - seeding...")
+            from seed import seed_database
+            seed_database()
+        else:
+            print(f"✅ Database has {db.query(User).count()} users")
+    finally:
+        db.close()
+
     yield
     # Shutdown
     print("👋 CoachMind Pro API Stopped")
