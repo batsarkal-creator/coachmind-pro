@@ -284,6 +284,19 @@ class Navigation {
         document.getElementById('notifBtn').addEventListener('click', () => {
             aiCoachView.togglePanel();
         });
+
+        // Logout button
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await api.logout();
+            dashboardView.renderFallbackDashboard();
+            aiCoachView.renderFallbackInsights();
+            this.showLoginModal();
+            appState.addToast({
+                type: 'info',
+                title: 'تم تسجيل الخروج',
+                message: 'تم إنهاء الجلسة بنجاح'
+            });
+        });
     }
 
     switchView(view, element) {

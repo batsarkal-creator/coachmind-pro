@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.db.database import get_db
-from app.schemas.schemas import DifficultyLevel
+from app.schemas.schemas import DifficultyLevel, ExerciseResponse
 from app.models.models import Exercise
 from app.api.v1.endpoints.auth import get_current_active_user, User
 
@@ -17,7 +17,7 @@ def _require_coach_or_admin(current_user: User):
     if current_user.role.value not in ("coach", "admin"):
         raise HTTPException(status_code=403, detail="يتطلب صلاحيات مدرب أو مدير")
 
-@router.get("/")
+@router.get("/", response_model=List[ExerciseResponse])
 async def list_exercises(
     category: Optional[str] = None,
     muscle: Optional[str] = None,
@@ -48,7 +48,7 @@ async def list_exercises(
     exercises = query.order_by(Exercise.popularity.desc()).offset(skip).limit(limit).all()
     return exercises
 
-@router.get("/{exercise_id}")
+@router.get("/{exercise_id}", response_model=ExerciseResponse)
 async def get_exercise(
     exercise_id: int,
     db: Session = Depends(get_db),
@@ -59,13 +59,11 @@ async def get_exercise(
     if not exercise:
         raise HTTPException(status_code=404, detail="التمرين غير موجود")
 
-    # Increment popularity
     exercise.popularity += 1
     db.commit()
-
     return exercise
 
-@router.post("/", status_code=201)
+@router.post("/", response_model=ExerciseResponse, status_code=201)
 async def create_exercise(
     exercise_data: dict,
     db: Session = Depends(get_db),
@@ -75,7 +73,7 @@ async def create_exercise(
     _require_coach_or_admin(current_user)
 
     allowed_fields = {"name", "name_en", "description", "category", "primary_muscle",
-                      "secondary_muscles", "difficulty", "equipment", "video_url", "tips"}
+                      "secondary_muscles", "difficulty", "equipment", "video_url", "tips", "instructions", "common_mistakes"}
     filtered = {k: v for k, v in exercise_data.items() if k in allowed_fields}
 
     exercise = Exercise(**filtered)
@@ -84,7 +82,7 @@ async def create_exercise(
     db.refresh(exercise)
     return exercise
 
-@router.put("/{exercise_id}")
+@router.put("/{exercise_id}", response_model=ExerciseResponse)
 async def update_exercise(
     exercise_id: int,
     exercise_data: dict,

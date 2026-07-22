@@ -1,6 +1,6 @@
 """
 CoachMind Pro - Database Seeding Script
-Populates database with initial data
+Populates database with initial data (idempotent - safe to run multiple times)
 """
 import os
 from sqlalchemy.orm import Session
@@ -18,6 +18,11 @@ def seed_database():
     db = SessionLocal()
 
     try:
+        # Skip if users already exist
+        if db.query(User).count() > 0:
+            print("⏭️ Database already seeded, skipping")
+            return
+
         # Create admin user
         admin = User(
             email="admin@coachmind.pro",

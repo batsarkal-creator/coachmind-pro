@@ -75,6 +75,7 @@ class UserProfile(UserResponse):
 # ==================== AUTH SCHEMAS ====================
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
 
@@ -83,6 +84,14 @@ class TokenData(BaseModel):
 
 class LoginRequest(BaseModel):
     username: str
+    password: str
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
     password: str
 
 # ==================== FOLDER SCHEMAS ====================
@@ -217,6 +226,95 @@ class AIInsightResponse(AIInsightBase):
     is_read: bool
     is_actioned: bool
     confidence_score: Optional[float]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ==================== PROGRESS SCHEMAS ====================
+class ProgressLogCreate(BaseModel):
+    weight: Optional[float] = Field(None, ge=20, le=500)
+    body_fat: Optional[float] = Field(None, ge=0, le=70)
+    muscle_mass: Optional[float] = Field(None, ge=0, le=200)
+    bench_press_max: Optional[float] = Field(None, ge=0, le=1000)
+    squat_max: Optional[float] = Field(None, ge=0, le=1000)
+    deadlift_max: Optional[float] = Field(None, ge=0, le=1000)
+    vo2_max: Optional[float] = Field(None, ge=0, le=100)
+    resting_heart_rate: Optional[int] = Field(None, ge=30, le=200)
+    mood: Optional[int] = Field(None, ge=1, le=10)
+    sleep_hours: Optional[float] = Field(None, ge=0, le=24)
+    energy_level: Optional[int] = Field(None, ge=1, le=10)
+    notes: Optional[str] = None
+    progress_photos: Optional[List[str]] = []
+
+class ProgressLogResponse(BaseModel):
+    id: int
+    user_id: int
+    weight: Optional[float]
+    body_fat: Optional[float]
+    muscle_mass: Optional[float]
+    bench_press_max: Optional[float]
+    squat_max: Optional[float]
+    deadlift_max: Optional[float]
+    vo2_max: Optional[float]
+    resting_heart_rate: Optional[int]
+    mood: Optional[int]
+    sleep_hours: Optional[float]
+    energy_level: Optional[int]
+    notes: Optional[str]
+    progress_photos: Optional[List[str]]
+    logged_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ==================== EXERCISE SCHEMAS ====================
+class ExerciseResponse(BaseModel):
+    id: int
+    name: str
+    name_en: Optional[str]
+    description: Optional[str]
+    category: Optional[str]
+    primary_muscle: Optional[str]
+    secondary_muscles: Optional[List[str]]
+    equipment: Optional[List[str]]
+    instructions: Optional[List[str]]
+    tips: Optional[List[str]]
+    common_mistakes: Optional[List[str]]
+    video_url: Optional[str]
+    image_urls: Optional[List[str]]
+    difficulty: Optional[DifficultyLevel]
+    popularity: int
+    avg_rating: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ==================== TRAINING PLAN SCHEMAS ====================
+class TrainingPlanCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    duration_weeks: int = Field(..., ge=1, le=52)
+    days_per_week: int = Field(..., ge=1, le=7)
+    goal: Optional[str] = None
+    difficulty: Optional[DifficultyLevel] = DifficultyLevel.BEGINNER
+    weeks: Optional[List[Dict[str, Any]]] = []
+
+class TrainingPlanResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    duration_weeks: Optional[int]
+    days_per_week: Optional[int]
+    goal: Optional[str]
+    difficulty: Optional[DifficultyLevel]
+    weeks: Optional[List[Dict[str, Any]]]
+    is_ai_generated: bool
+    user_count: int
+    completion_rate: float
+    avg_rating: float
+    created_by: Optional[int]
     created_at: datetime
 
     class Config:

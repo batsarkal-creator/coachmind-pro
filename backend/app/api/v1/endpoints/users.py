@@ -2,15 +2,18 @@
 CoachMind Pro - User Endpoints
 User management and profile operations
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime, timedelta, timezone
+import os
+import uuid
 
 from app.db.database import get_db
 from app.schemas.schemas import UserResponse, UserUpdate, UserProfile
 from app.models.models import User, WorkoutSession, ProgressLog
 from app.api.v1.endpoints.auth import get_current_active_user
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -116,3 +119,34 @@ async def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود")
     return user
+
+@router.post("/avatar", response_model=UserResponse)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Upload user avatar"""
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="صيغة الملف غير مدعومة. استخدم JPEG أو PNG أو WebP")
+    
+    max_size = 5 * 1024 * 1024  # 5MB
+    content = await file.read()
+    if len(content) > max_size:
+        raise HTTPException(status_code=400, detail="حجم الملف يتجاوز 5 ميجابايت")
+    
+    upload_dir = os.path.join("uploads", "avatars")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    filename = f"avatar_{current_user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+    filepath = os.path.join(upload_dir, filename)
+    
+    with open(filepath, "wb") as f:
+        f.write(content)
+    
+    current_user.avatar_url = f"/uploads/avatars/{filename}"
+    db.commit()
+    db.refresh(current_user)
+    return current_user

@@ -1,6 +1,6 @@
 /**
  * CoachMind Pro - API Client
- * Handles all backend communication
+ * Handles all backend communication with refresh token support
  */
 
 const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || 'https://coachmind-pro-1.onrender.com/api/v1';
@@ -9,21 +9,26 @@ class APIClient {
     constructor() {
         this.baseURL = API_BASE_URL;
         this.token = localStorage.getItem('coachmind_token');
+        this.refreshToken = localStorage.getItem('coachmind_refresh_token');
+        this.refreshPromise = null;
     }
 
-    // Set auth token
-    setToken(token) {
+    setToken(token, refreshToken) {
         this.token = token;
         localStorage.setItem('coachmind_token', token);
+        if (refreshToken) {
+            this.refreshToken = refreshToken;
+            localStorage.setItem('coachmind_refresh_token', refreshToken);
+        }
     }
 
-    // Clear auth token
     clearToken() {
         this.token = null;
+        this.refreshToken = null;
         localStorage.removeItem('coachmind_token');
+        localStorage.removeItem('coachmind_refresh_token');
     }
 
-    // Generic request method with timeout
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const timeout = options.timeout || 15000;
@@ -40,15 +45,12 @@ class APIClient {
             config.headers['Authorization'] = `Bearer ${this.token}`;
         }
 
-        // Handle FormData (file uploads)
         if (options.body instanceof FormData) {
             delete config.headers['Content-Type'];
         }
 
-        // Remove non-fetch options
         delete config.timeout;
 
-        // Create abort controller for timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
         config.signal = controller.signal;
@@ -57,24 +59,63 @@ class APIClient {
             const response = await fetch(url, config);
             clearTimeout(timeoutId);
 
+            if (response.status === 401 && this.refreshToken && !endpoint.includes('/auth/')) {
+                const refreshed = await this.tryRefreshToken();
+                if (refreshed) {
+                    config.headers['Authorization'] = `Bearer ${this.token}`;
+                    const retryResponse = await fetch(url, config);
+                    if (!retryResponse.ok) {
+                        const error = await retryResponse.json().catch(() => ({ detail: 'حدث خطأ' }));
+                        throw new Error(error.detail || `HTTP ${retryResponse.status}`);
+                    }
+                    if (retryResponse.status === 204) return null;
+                    return await retryResponse.json();
+                }
+            }
+
             if (!response.ok) {
-                const error = await response.json().catch(() => ({
-                    detail: 'حدث خطأ غير متوقع'
-                }));
+                const error = await response.json().catch(() => ({ detail: 'حدث خطأ غير متوقع' }));
                 throw new Error(error.detail || `HTTP ${response.status}`);
             }
 
             if (response.status === 204) return null;
-
             return await response.json();
         } catch (error) {
             clearTimeout(timeoutId);
             if (error.name === 'AbortError') {
                 throw new Error('الخادم يستغرق وقتاً طويلاً. جرب مرة أخرى.');
             }
-            console.error('API Error:', error);
             throw error;
         }
+    }
+
+    async tryRefreshToken() {
+        if (this.refreshPromise) return this.refreshPromise;
+
+        this.refreshPromise = (async () => {
+            try {
+                const response = await fetch(`${this.baseURL}/auth/refresh?refresh_token=${this.refreshToken}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    this.clearToken();
+                    return false;
+                }
+
+                const data = await response.json();
+                this.setToken(data.access_token, data.refresh_token);
+                return true;
+            } catch {
+                this.clearToken();
+                return false;
+            } finally {
+                this.refreshPromise = null;
+            }
+        })();
+
+        return this.refreshPromise;
     }
 
     // ==================== AUTH ====================
@@ -90,7 +131,7 @@ class APIClient {
             body: formData
         });
 
-        this.setToken(data.access_token);
+        this.setToken(data.access_token, data.refresh_token);
         return data;
     }
 
@@ -105,6 +146,27 @@ class APIClient {
         return await this.request('/auth/me');
     }
 
+    async logout() {
+        try {
+            await this.request('/auth/logout', { method: 'POST' });
+        } catch {}
+        this.clearToken();
+    }
+
+    async requestPasswordReset(email) {
+        return await this.request('/auth/password-reset-request', {
+            method: 'POST',
+            body: JSON.stringify({ email })
+        });
+    }
+
+    async resetPassword(token, newPassword) {
+        return await this.request('/auth/password-reset', {
+            method: 'POST',
+            body: JSON.stringify({ token, new_password: newPassword })
+        });
+    }
+
     // ==================== USERS ====================
 
     async getProfile() {
@@ -115,6 +177,15 @@ class APIClient {
         return await this.request('/users/profile', {
             method: 'PUT',
             body: JSON.stringify(data)
+        });
+    }
+
+    async uploadAvatar(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return await this.request('/users/avatar', {
+            method: 'POST',
+            body: formData
         });
     }
 
@@ -179,7 +250,6 @@ class APIClient {
     async uploadFile(folderId, file) {
         const formData = new FormData();
         formData.append('file', file);
-
         return await this.request(`/files/upload?folder_id=${folderId}`, {
             method: 'POST',
             body: formData
@@ -238,10 +308,7 @@ class APIClient {
     async analyzeWorkout(workoutData, userMetrics) {
         return await this.request('/ai/analyze-workout', {
             method: 'POST',
-            body: JSON.stringify({
-                workout_data: workoutData,
-                user_metrics: userMetrics
-            })
+            body: JSON.stringify({ workout_data: workoutData, user_metrics: userMetrics })
         });
     }
 
@@ -333,10 +400,16 @@ class APIClient {
         return await this.request(`/plans/${id}`);
     }
 
+    async createPlan(data) {
+        return await this.request('/plans/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
     async deletePlan(id) {
         return await this.request(`/plans/${id}`, { method: 'DELETE' });
     }
 }
 
-// Global API instance
 export const api = new APIClient();
