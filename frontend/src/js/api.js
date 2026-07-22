@@ -75,7 +75,18 @@ class APIClient {
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({ detail: 'حدث خطأ غير متوقع' }));
-                throw new Error(error.detail || `HTTP ${response.status}`);
+                let message = 'حدث خطأ غير متوقع';
+                if (typeof error.detail === 'string') {
+                    message = error.detail;
+                } else if (Array.isArray(error.detail)) {
+                    const first = error.detail[0];
+                    if (first && first.msg) {
+                        const field = first.loc ? first.loc[first.loc.length - 1] : '';
+                        const fieldAr = { password: 'كلمة المرور', email: 'البريد الإلكتروني', username: 'اسم المستخدم', full_name: 'الاسم' };
+                        message = (fieldAr[field] || field) + ': ' + first.msg;
+                    }
+                }
+                throw new Error(message);
             }
 
             if (response.status === 204) return null;
