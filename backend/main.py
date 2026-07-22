@@ -2,7 +2,7 @@
 CoachMind Pro - Backend API
 FastAPI-based REST API for AI Fitness Training Platform
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
