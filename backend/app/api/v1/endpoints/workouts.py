@@ -81,9 +81,11 @@ async def update_workout(
 
     # Auto-calculate metrics
     if workout_update.status == "completed" and not workout.completed_at:
-        workout.completed_at = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        workout.completed_at = now
         if workout.started_at:
-            workout.duration_minutes = int((datetime.now(timezone.utc) - workout.started_at).total_seconds() / 60)
+            started = workout.started_at if workout.started_at.tzinfo else workout.started_at.replace(tzinfo=timezone.utc)
+            workout.duration_minutes = int((now - started).total_seconds() / 60)
 
     if workout_update.status == "in_progress" and not workout.started_at:
         workout.started_at = datetime.now(timezone.utc)

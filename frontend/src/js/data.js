@@ -154,14 +154,16 @@ class DataService {
 
     async createFolder(data) {
         const result = await api.createFolder(data);
-        this.invalidateCache(`folders_${data.parent_id || 'root'}`);
+        this.invalidateCache(`folders_root_0_20`);
+        if (data.parent_id) this.invalidateCache(`folders_${data.parent_id}_0_20`);
         return result;
     }
 
     async updateFolder(id, data) {
         const result = await api.updateFolder(id, data);
         this.invalidateCache(`folder_${id}`);
-        this.invalidateCache(`folders_${data.parent_id || 'root'}`);
+        this.invalidateCache(`folders_root_0_20`);
+        if (data.parent_id) this.invalidateCache(`folders_${data.parent_id}_0_20`);
         return result;
     }
 
@@ -184,13 +186,13 @@ class DataService {
 
     async createFile(data) {
         const result = await api.createFile(data);
-        this.invalidateCache(`files_${JSON.stringify({ folder_id: data.folder_id })}`);
+        this.invalidateCache(`files_${JSON.stringify({ folder_id: data.folder_id })}_0_20`);
         return result;
     }
 
     async uploadFile(folderId, file) {
         const result = await api.uploadFile(folderId, file);
-        this.invalidateCache(`files_${JSON.stringify({ folder_id: folderId })}`);
+        this.invalidateCache(`files_${JSON.stringify({ folder_id: folderId })}_0_20`);
         return result;
     }
 
@@ -329,6 +331,13 @@ const dataService = new DataService();
 
 // ==================== UTILITY FUNCTIONS ====================
 
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 function formatFileSize(bytes) {
     if (!bytes || bytes <= 0) return '0 Bytes';
     const k = 1024;
@@ -381,7 +390,7 @@ function getDifficultyName(difficulty) {
         advanced: 'متقدم',
         elite: 'محترف'
     };
-    return names[difficulty] || difficulty;
+    return names[difficulty] || 'مبتدئ';
 }
 
 function getFileIcon(fileType) {
@@ -431,6 +440,7 @@ const FALLBACK_INSIGHTS = [
 // ==================== EXPORTS ====================
 
 export {
+    escapeHtml,
     formatFileSize,
     formatDate,
     formatRelativeTime,

@@ -330,9 +330,11 @@
 }
 
 .insight-icon.tip { background: rgba(16, 185, 129, 0.12); }
-.insight-icon.warn { background: rgba(245, 158, 11, 0.12); }
+.insight-icon.warn, .insight-icon.warning { background: rgba(245, 158, 11, 0.12); }
 .insight-icon.info { background: rgba(59, 130, 246, 0.12); }
 .insight-icon.goal { background: rgba(139, 92, 246, 0.12); }
+.insight-icon.recommendation { background: rgba(59, 130, 246, 0.12); }
+.insight-icon.analysis { background: rgba(16, 185, 129, 0.12); }
 
 .insight-content {
     flex: 1;

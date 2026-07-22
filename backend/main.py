@@ -6,11 +6,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 import uvicorn
 import os
+
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler  # type: ignore[import-not-found]
+    from slowapi.errors import RateLimitExceeded  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - fallback when slowapi is not installed
+    Limiter = None
+    _rate_limit_exceeded_handler = None
+    RateLimitExceeded = None
+
+try:
+    from slowapi.util import get_remote_address  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - fallback for newer/older slowapi installs
+    def get_remote_address(request):
+        return request.client.host if request.client else "127.0.0.1"
 
 from app.core.config import settings
 from app.api.v1.router import api_router
@@ -23,8 +34,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler"""
     # Run migrations with Alembic
     try:
-        from alembic.config import Config
-        from alembic import command
+        import importlib
+
+        alembic_config_module = importlib.import_module("alembic.config")
+        alembic_module = importlib.import_module("alembic")
+
+        Config = alembic_config_module.Config
+        command = alembic_module.command
+
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
         print("✅ Database migrations applied")

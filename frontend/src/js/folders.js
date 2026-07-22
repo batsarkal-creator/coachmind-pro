@@ -3,7 +3,7 @@
  * Folder browser with file management
  */
 
-import { formatRelativeTime, dataService, appState } from './data.js';
+import { escapeHtml, formatRelativeTime, dataService, appState } from './data.js';
 
 class FolderView {
     constructor() {
@@ -15,11 +15,14 @@ class FolderView {
     async openFolder(folderId) {
         this.showLoading();
         try {
-            const folder = await dataService.getFolder(folderId);
+            const [folder, files] = await Promise.all([
+                dataService.getFolder(folderId),
+                dataService.getFiles({ folder_id: folderId }, 0, 100)
+            ]);
             this.currentFolderId = folderId;
             this.breadcrumb = [{ id: null, name: 'المجلدات' }, { id: folderId, name: folder.name }];
             appState.setView('folders', { folderId });
-            this.renderFolderView(folder);
+            this.renderFolderView(folder, files);
         } catch (error) {
             console.error('Failed to load folder:', error);
             this.renderError('تعذر تحميل المجلد');
@@ -45,8 +48,8 @@ class FolderView {
         `;
     }
 
-    renderFolderView(folder) {
-        const folderFiles = folder.files || [];
+    renderFolderView(folder, files) {
+        const folderFiles = files || [];
 
         this.container.innerHTML = `
             ${this.renderBreadcrumb()}
@@ -78,8 +81,8 @@ class FolderView {
                         ${folder.icon}
                     </div>
                     <div class="folder-header-title">
-                        <h2>${folder.name}</h2>
-                        <p>${folder.description} • ${folder.file_count || 0} ملف</p>
+                        <h2>${escapeHtml(folder.name)}</h2>
+                        <p>${escapeHtml(folder.description)} • ${folder.file_count || 0} ملف</p>
                     </div>
                 </div>
                 <div class="folder-header-actions">
@@ -146,8 +149,8 @@ class FolderView {
                         <div class="file-info">
                             <div class="file-icon ${f.file_type}">${iconMap[f.file_type] || '📄'}</div>
                             <div class="file-details">
-                                <div class="file-name">${f.name}</div>
-                                <div class="file-desc">${f.description || ''}</div>
+                                <div class="file-name">${escapeHtml(f.name)}</div>
+                                <div class="file-desc">${escapeHtml(f.description)}</div>
                             </div>
                         </div>
                         <div>

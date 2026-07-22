@@ -668,8 +668,37 @@ body {
 }
 
 /* ============================================
-   LOADING & EMPTY STATES
-   ============================================ */
+    LOADING & EMPTY STATES
+    ============================================ */
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.loading-state p {
+    font-size: 14px;
+    font-weight: 600;
+}
 
 .loading-skeleton {
     background: linear-gradient(
@@ -710,6 +739,49 @@ body {
 .empty-state p {
     font-size: 14px;
 }
+
+/* Alert boxes */
+.alert {
+    padding: 18px 22px;
+    border-radius: var(--radius-md);
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+}
+
+.alert h4 {
+    font-size: 15px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.alert p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+}
+
+.alert-warning {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.alert-warning h4 { color: var(--warning); }
+
+.alert-error {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.alert-error h4 { color: var(--danger); }
+
+.alert-success {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.alert-success h4 { color: var(--accent); }
 
 /* ============================================
    TAGS & BADGES
@@ -788,6 +860,28 @@ body {
         transition: right var(--transition-normal);
     }
     .sidebar.open { right: 0; }
+    .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-size: 18px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+    .sidebar-overlay.active { display: block; }
     .stats-grid { grid-template-columns: 1fr; }
     .top-bar { padding: 0 16px; }
     .content-area { padding: 16px; }

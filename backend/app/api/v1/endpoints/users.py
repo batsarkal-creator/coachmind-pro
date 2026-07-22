@@ -23,13 +23,13 @@ def _calculate_streak(db: Session, user_id: int) -> int:
     streak = 0
     check_date = today
     for _ in range(365):
-        day_start = datetime.combine(check_date, datetime.min.time()).replace(tzinfo=timezone.utc)
-        day_end = day_start + timedelta(days=1)
+        day_start_naive = datetime.combine(check_date, datetime.min.time())
+        day_end_naive = day_start_naive + timedelta(days=1)
         has_workout = db.query(WorkoutSession).filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.status == "completed",
-            WorkoutSession.completed_at >= day_start,
-            WorkoutSession.completed_at < day_end
+            WorkoutSession.completed_at >= day_start_naive,
+            WorkoutSession.completed_at < day_end_naive
         ).first()
         if has_workout:
             streak += 1

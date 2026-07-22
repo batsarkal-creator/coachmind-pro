@@ -130,19 +130,19 @@ class AICoachView {
         try {
             // Get user metrics and recent workouts for analysis
             const user = await dataService.getCurrentUser();
-            const workouts = await dataService.getWorkouts('completed');
+            const workouts = await dataService.getWorkouts('completed') || [];
             
             const workoutData = {
                 total_volume: workouts.reduce((sum, w) => sum + (w.total_volume || 0), 0),
-                avg_heart_rate: workouts.reduce((sum, w) => sum + (w.avg_heart_rate || 0), 0) / Math.max(workouts.length, 1),
-                max_heart_rate: Math.max(...workouts.map(w => w.max_heart_rate || 0), 0),
+                avg_heart_rate: workouts.length > 0 ? workouts.reduce((sum, w) => sum + (w.avg_heart_rate || 0), 0) / workouts.length : 0,
+                max_heart_rate: workouts.length > 0 ? Math.max(...workouts.map(w => w.max_heart_rate || 0), 0) : 0,
                 exercises: workouts.flatMap(w => w.exercises || []),
                 avg_intensity: 0.75
             };
 
             const userMetrics = {
                 resting_heart_rate: user.resting_heart_rate || 70,
-                avg_volume: workoutData.total_volume / Math.max(workouts.length, 1),
+                avg_volume: workouts.length > 0 ? workoutData.total_volume / workouts.length : 0,
                 last_workout_date: workouts[0]?.completed_at || new Date().toISOString(),
                 hrv: user.hrv || 50,
                 baseline_hrv: user.baseline_hrv || 55,

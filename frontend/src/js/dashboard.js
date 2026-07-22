@@ -3,7 +3,7 @@
  * Renders dashboard view with stats, folders, and recent files using real API
  */
 
-import { formatRelativeTime, formatFileSize, getDifficultyClass, getDifficultyName, dataService, appState, FALLBACK_FOLDERS, FALLBACK_FILES } from './data.js';
+import { escapeHtml, formatRelativeTime, formatFileSize, getDifficultyClass, getDifficultyName, dataService, appState, FALLBACK_FOLDERS, FALLBACK_FILES } from './data.js';
 
 class DashboardView {
     constructor() {
@@ -175,7 +175,7 @@ class DashboardView {
                         <div class="folder-icon" style="background: ${folderColors[iconKey] || f.color || '#3b82f6'}18;">
                             ${folderIcons[iconKey] || f.icon || '📁'}
                         </div>
-                        <div class="folder-name">${f.name || ''}</div>
+                        <div class="folder-name">${escapeHtml(f.name)}</div>
                         <div class="folder-meta">
                             <span>📄 ${f.file_count || 0} ملف</span>
                             <span>🕐 ${f.updated_at ? formatRelativeTime(f.updated_at) : 'منذ يوم'}</span>
@@ -216,8 +216,8 @@ class DashboardView {
                         <div class="file-info">
                             <div class="file-icon ${f.file_type}">${iconMap[f.file_type] || '📄'}</div>
                             <div class="file-details">
-                                <div class="file-name">${f.name}</div>
-                                <div class="file-desc">${f.description || ''}</div>
+                                <div class="file-name">${escapeHtml(f.name)}</div>
+                                <div class="file-desc">${escapeHtml(f.description)}</div>
                             </div>
                         </div>
                         <div><span class="tag ${tagClass[f.difficulty]}">${tagName[f.difficulty]}</span></div>

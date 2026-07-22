@@ -127,7 +127,7 @@ async def upload_file(
     # Save file to disk
     user_dir = os.path.join(UPLOAD_DIR, str(current_user.id))
     os.makedirs(user_dir, exist_ok=True)
-    safe_name = f"{uuid.uuid4().hex}_{file.filename}"
+    safe_name = f"{uuid.uuid4().hex}_{os.path.basename(file.filename).replace('/', '_').replace('\\', '_')}"
     file_path = os.path.join(user_dir, safe_name)
 
     with open(file_path, "wb") as f:

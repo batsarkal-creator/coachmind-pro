@@ -40,13 +40,15 @@ class AICoachService:
         current_volume = workout_data.get("total_volume", 0)
         previous_volume = user_metrics.get("avg_volume", 0)
 
-        if current_volume > previous_volume * 1.1:
+        if previous_volume > 0 and current_volume > previous_volume * 1.1:
+            pct = ((current_volume / previous_volume - 1) * 100)
             insights.append({
                 "title": "تقدم ملحوظ في الحجم التدريبي!",
-                "content": f"حجم تدريبك اليوم ({current_volume}kg) أعلى بـ {((current_volume/previous_volume - 1) * 100):.0f}% عن معدلك. استمر في هذا الإيقاع!",
+                "content": f"حجم تدريبك اليوم ({current_volume}kg) أعلى بـ {pct:.0f}% عن معدلك. استمر في هذا الإيقاع!",
                 "insight_type": InsightType.ANALYSIS,
                 "priority": 2
             })
+        elif previous_volume > 0 and current_volume < previous_volume * 0.85:
         elif current_volume < previous_volume * 0.85:
             insights.append({
                 "title": "انخفاض في الحجم التدريبي",
@@ -261,8 +263,8 @@ class AICoachService:
 
         # Volume factor
         current_vol = workout_data.get("total_volume", 0)
-        avg_vol = user_metrics.get("avg_volume", 1)
-        vol_ratio = min(current_vol / avg_vol, 1.5)
+        avg_vol = user_metrics.get("avg_volume", 0)
+        vol_ratio = min(current_vol / max(avg_vol, 1), 1.5)
         score += (vol_ratio - 1) * 10
 
         # Intensity factor

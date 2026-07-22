@@ -5,7 +5,7 @@
 
 // Import utility functions and services
 import { api } from './api.js';
-import { formatFileSize, getFileIcon, getDifficultyClass, getDifficultyName, dataService, appState } from './data.js';
+import { formatFileSize, formatRelativeTime, getFileIcon, getDifficultyClass, getDifficultyName, escapeHtml, dataService, appState } from './data.js';
 import { dashboardView } from './dashboard.js';
 import { folderView } from './folders.js';
 import { aiCoachView } from './ai-coach.js';
@@ -275,6 +275,25 @@ class Navigation {
             });
         });
 
+        // Sidebar toggle for mobile
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        if (sidebarToggle && sidebar) {
+            let overlay = document.createElement('div');
+            overlay.className = 'sidebar-overlay';
+            overlay.id = 'sidebarOverlay';
+            document.body.appendChild(overlay);
+
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('active');
+            });
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+            });
+        }
+
         // Create button
         document.getElementById('createBtn').addEventListener('click', () => {
             modalView.showCreateModal('file');
@@ -324,7 +343,7 @@ class Navigation {
                 dashboardView.render();
                 break;
             case 'folders':
-                dashboardView.render(); // Show folders overview
+                this.renderFoldersView();
                 break;
             case 'plans':
                 this.renderPlansView();
@@ -374,9 +393,9 @@ class Navigation {
                     ${(plans || []).map(p => `
                         <div class="folder-card" style="cursor:pointer;" onclick="modalView.open('${p.name}', '<div class=\\'workout-detail\\'><h5>📋 معلومات الخطة</h5><p>${p.name}</p></div><div class=\\'workout-detail\\'><h5>📝 الوصف</h5><p>${p.description || 'خطة تدريبية'}</p></div><div class=\\'workout-detail\\'><h5>⏱️ المدة</h5><p>${p.duration_weeks || '—'} أسابيع | ${p.days_per_week || '—'} أيام/أسبوع</p></div><div class=\\'workout-detail\\'><h5>🎯 الهدف</h5><p>${p.goal || '—'}</p></div><div class=\\'workout-detail\\'><h5>📊 المستوى</h5><p>${getDifficultyName(p.difficulty)}</p></div>')">
                             <div class="folder-icon" style="background: ${planColor}18; font-size: 32px;">📋</div>
-                            <div class="folder-name">${p.name}</div>
+                            <div class="folder-name">${escapeHtml(p.name)}</div>
                             <div class="folder-meta">
-                                <span>${p.description || 'خطة تدريبية'}</span>
+                                <span>${escapeHtml(p.description || 'خطة تدريبية')}</span>
                                 <span>${p.duration_weeks ? p.duration_weeks + ' أسابيع' : ''}</span>
                             </div>
                         </div>
@@ -448,8 +467,8 @@ class Navigation {
                             <div class="file-info">
                                 <div class="file-icon" style="background: var(--accent-glow); font-size: 20px;">${getFileIcon(e.category)}</div>
                                 <div class="file-details">
-                                    <div class="file-name">${e.name} (${e.name_en || ''})</div>
-                                    <div class="file-desc">${e.description || 'تمرين'}</div>
+                                    <div class="file-name">${escapeHtml(e.name)} (${escapeHtml(e.name_en || '')})</div>
+                                    <div class="file-desc">${escapeHtml(e.description || 'تمرين')}</div>
                                 </div>
                             </div>
                             <div class="file-date">${e.primary_muscle || ''}</div>
@@ -525,6 +544,68 @@ class Navigation {
                 </button>
             </div>
         `;
+    }
+
+    async renderFoldersView() {
+        this.container.innerHTML = `
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="icon">📁</span>
+                    المجلدات
+                </div>
+                <button class="btn btn-primary" onclick="modalView.showCreateFolderModal()">
+                    <span>➕</span> مجلد جديد
+                </button>
+            </div>
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>جاري تحميل المجلدات...</p>
+            </div>
+        `;
+
+        try {
+            const folders = await dataService.getFolders();
+            this.container.innerHTML = `
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">📁</span>
+                        المجلدات
+                    </div>
+                    <button class="btn btn-primary" onclick="modalView.showCreateFolderModal()">
+                        <span>➕</span> مجلد جديد
+                    </button>
+                </div>
+                <div class="folders-grid">
+                    ${(folders || []).map(f => `
+                        <div class="folder-card" onclick="folderView.openFolder(${f.id})">
+                            <div class="folder-icon" style="background: ${f.color || '#3b82f6'}18;">
+                                ${f.icon || '📁'}
+                            </div>
+                            <div class="folder-name">${f.name || ''}</div>
+                            <div class="folder-meta">
+                                <span>📄 ${f.file_count || 0} ملف</span>
+                                <span>🕐 ${f.updated_at ? formatRelativeTime(f.updated_at) : 'منذ يوم'}</span>
+                            </div>
+                        </div>
+                    `).join('') || '<div class="empty-state"><div class="icon">📂</div><h3>لا توجد مجلدات</h3><p>أنشئ مجلداً جديداً لتنظيم ملفاتك</p></div>'}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Failed to load folders:', error);
+            this.container.innerHTML = `
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">📁</span>
+                        المجلدات
+                    </div>
+                </div>
+                <div class="alert alert-warning">
+                    <h4>⚠️ تعذر تحميل المجلدات</h4>
+                    <p>تأكد من تشغيل الخادم الخلفي.</p>
+                    <button class="btn btn-primary" onclick="navigation.renderFoldersView()">إعادة المحاولة</button>
+                </div>
+            `;
+        }
     }
 }
 

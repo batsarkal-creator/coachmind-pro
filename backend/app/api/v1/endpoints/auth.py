@@ -168,7 +168,7 @@ async def password_reset_request(request: Request, data: PasswordResetRequest, d
         "expires": datetime.now(timezone.utc) + timedelta(hours=1)
     }
     
-    return {"message": "تم إرسال رمز إعادة التعيين", "reset_token": reset_token}
+    return {"message": "تم إرسال رمز إعادة التعيين"}
 
 @router.post("/password-reset")
 @limiter.limit("5/minute")
