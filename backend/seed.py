@@ -9,15 +9,28 @@ from app.models.models import (
     User, Folder, File, Exercise,
     UserRole, DifficultyLevel, FileType
 )
-from app.api.v1.endpoints.auth import get_password_hash
+from app.api.v1.endpoints.auth import get_password_hash, verify_password
 
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Change-Me-Now!2026")
-DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "Change-Me-Now!2026")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "demo123")
 
 def seed_database():
     db = SessionLocal()
 
     try:
+        # Fix passwords for existing demo/admin users if they're wrong
+        admin = db.query(User).filter(User.username == "admin").first()
+        if admin and not verify_password(ADMIN_PASSWORD, admin.hashed_password):
+            admin.hashed_password = get_password_hash(ADMIN_PASSWORD)
+            db.commit()
+            print("🔑 Updated admin password")
+
+        demo = db.query(User).filter(User.username == "demo").first()
+        if demo and not verify_password(DEMO_PASSWORD, demo.hashed_password):
+            demo.hashed_password = get_password_hash(DEMO_PASSWORD)
+            db.commit()
+            print("🔑 Updated demo password")
+
         # Skip if users already exist
         if db.query(User).count() > 0:
             print("⏭️ Database already seeded, skipping")
